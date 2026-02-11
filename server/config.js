@@ -9,7 +9,7 @@ function parseNumber(value, fallback) {
 
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
-  port: parseNumber(process.env.API_PORT, 3001),
+  port: parseNumber(process.env.API_PORT ?? process.env.PORT, 3001),
   dataDir: process.env.DATA_DIR
     ? path.resolve(process.env.DATA_DIR)
     : path.join(process.cwd(), "server", "data"),

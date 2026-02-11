@@ -106,6 +106,20 @@ Backend API: `http://localhost:3001`
 
 Vite proxy is configured for `/api` and `/ws`, so frontend requests can use relative paths.
 
+## Render Deployment
+
+This repo includes `render.yaml` for Blueprint deploy.
+
+1. Push this repo to GitHub.
+2. In Render, create a new service from Blueprint and select the repo.
+3. Set `PRIMARY_ADMIN_PASSWORD` during deploy.
+4. Deploy and open:
+   - `https://<your-service>.onrender.com`
+   - health check: `/api/health`
+
+The blueprint mounts persistent storage at `/var/data`, which is required for
+text-file credentials, logs, and reports.
+
 ## API Overview
 
 - Auth

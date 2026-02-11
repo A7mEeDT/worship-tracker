@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: worship-tracker
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run server:start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PRIMARY_ADMIN_USERNAME
+        value: primary-admin
+      - key: PRIMARY_ADMIN_PASSWORD
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: SESSION_MAX_AGE_MS
+        value: 28800000
+      - key: BCRYPT_ROUNDS
+        value: 12
+    disk:
+      name: worship-data
+      mountPath: /var/data
+      sizeGB: 10
