@@ -9,12 +9,15 @@ import { createActivityRouter } from "./routes/activity-routes.js";
 import { createAdminRouter } from "./routes/admin-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
 import { createReportRouter } from "./routes/report-routes.js";
+import { createQuestionRouter } from "./routes/question-routes.js";
+import { createAdminQuestionRouter } from "./routes/admin-question-routes.js";
 import { createWirdConfigRouter } from "./routes/wird-config-routes.js";
 import { createAuditService } from "./services/audit-service.js";
 import { getRequestIpAddress, initializeActivityLog } from "./services/activity-service.js";
 import * as authService from "./services/auth-service.js";
 import * as credentialsService from "./services/credential-service.js";
 import { createNotificationService } from "./services/notification-service.js";
+import * as questionService from "./services/question-service.js";
 import * as reportService from "./services/report-service.js";
 import * as wirdConfigService from "./services/wird-config-service.js";
 
@@ -25,6 +28,7 @@ await credentialsService.initializeCredentialStore();
 await initializeActivityLog();
 await wirdConfigService.initializeWirdConfigStore();
 await reportService.initializeReportStore();
+await questionService.initializeQuestionStore();
 
 const notificationService = createNotificationService({
   authenticateToken: authService.authenticateToken,
@@ -102,6 +106,26 @@ app.use(
   createReportRouter({
     authMiddleware,
     reportService,
+    auditService,
+    getRequestIpAddress,
+  }),
+);
+
+app.use(
+  "/api/questions",
+  createQuestionRouter({
+    authMiddleware,
+    questionService,
+    auditService,
+    getRequestIpAddress,
+  }),
+);
+
+app.use(
+  "/api/admin/questions",
+  createAdminQuestionRouter({
+    authMiddleware,
+    questionService,
     auditService,
     getRequestIpAddress,
   }),

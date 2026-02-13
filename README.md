@@ -10,6 +10,7 @@ This project now includes:
 - Text-file activity and notification logging
 - Real-time admin notifications via WebSocket with polling fallback
 - Analytics dashboard (timeline + per-user activity charts)
+- Timed question groups (admin-managed) with scoring, results, and CSV export
 
 ## Tech Stack
 
@@ -50,6 +51,12 @@ Location: `server/data/`
   - Format per line: `name|type|points`
 - `worship_reports.txt`
   - One JSON report record per line, scoped by `username`
+- `question_groups.txt`
+  - One JSON question group per line (includes correct answers; admin-only)
+- `question_sessions.txt`
+  - Session start tracking per user per group (used to compute time spent)
+- `question_submissions.txt`
+  - One JSON submission per line (answers + scoring details)
 - `user_activity_log.txt`
   - Format: `YYYY-MM-DD HH:mm:ss, username, action, ip`
 - `admin_notifications.txt`
@@ -139,6 +146,17 @@ text-file credentials, logs, and reports.
   - `GET /api/reports?window=1d|7d|1w|1m|all[&username=foo]`
   - `GET /api/reports/export.csv?window=...` (Excel-compatible CSV)
   - `DELETE /api/reports` (clear own reports)
+- Questions (users)
+  - `GET /api/questions/active`
+  - `POST /api/questions/:groupId/submit`
+- Questions (admins)
+  - `GET /api/admin/questions/groups`
+  - `POST /api/admin/questions/groups`
+  - `PUT /api/admin/questions/groups/:groupId`
+  - `POST /api/admin/questions/groups/:groupId/open`
+  - `POST /api/admin/questions/groups/:groupId/lock`
+  - `GET /api/admin/questions/groups/:groupId/submissions`
+  - `GET /api/admin/questions/groups/:groupId/submissions/export.csv`
 - Admin
   - `GET /api/admin/analytics/timeline?days=7|30|90`
   - `GET /api/admin/analytics/per-user?days=7|30|90`
@@ -157,3 +175,4 @@ text-file credentials, logs, and reports.
 - Rotate `JWT_SECRET` carefully (existing sessions will become invalid).
 - Wird tab configuration is now global and server-owned; admin edits affect all users.
 - Reports tab is role-scoped: admins can view/export all user accounts; regular users can only view/export their own reports.
+- Zikr/azkar tracking is visible to users but excluded from total points.

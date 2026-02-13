@@ -237,8 +237,16 @@ export function useWorshipData() {
     let total = 0;
 
     Object.values(prayers).forEach((p) => {
-      if (p.jamaah) total += 8;
-      else if (p.fard) total += 3;
+      const jamaahMosque = Boolean(p.jamaahMosque ?? p.jamaah);
+      const jamaahHome = Boolean(p.jamaahHome);
+      const qada = Boolean(p.qada);
+      const fard = Boolean(p.fard);
+
+      if (jamaahMosque) total += 8;
+      else if (jamaahHome) total += 5;
+      else if (fard) total += 3;
+      else if (qada) total += 1;
+
       if (p.sunnah) total += 1;
       if (p.khatm) total += 1;
     });
@@ -248,12 +256,11 @@ export function useWorshipData() {
     });
 
     total += quranValue;
-    Object.values(zikrTotals).forEach((v) => {
-      total += v;
-    });
+
+    // NOTE: "الأذكار" tab is for spiritual tracking only and does not affect total points.
 
     return total;
-  }, [prayers, wirds, wirdChecked, quranValue, zikrTotals]);
+  }, [prayers, wirds, wirdChecked, quranValue]);
 
   const loadDay = useCallback(
     (day: string) => {
@@ -270,7 +277,20 @@ export function useWorshipData() {
       }
 
       if (dayData.childName) setChildName(dayData.childName);
-      if (dayData.prayers) setPrayers(dayData.prayers);
+      if (dayData.prayers) {
+        const normalized: Record<string, PrayerData> = {};
+        Object.entries(dayData.prayers).forEach(([name, state]) => {
+          normalized[name] = {
+            jamaahHome: Boolean((state as PrayerData | undefined)?.jamaahHome),
+            jamaahMosque: Boolean((state as PrayerData | undefined)?.jamaahMosque ?? (state as PrayerData | undefined)?.jamaah),
+            qada: Boolean((state as PrayerData | undefined)?.qada),
+            fard: Boolean((state as PrayerData | undefined)?.fard),
+            sunnah: Boolean((state as PrayerData | undefined)?.sunnah),
+            khatm: Boolean((state as PrayerData | undefined)?.khatm),
+          };
+        });
+        setPrayers(normalized);
+      }
       if (dayData.quran) setQuranValue(dayData.quran);
 
       const newWirdChecked: Record<number, boolean> = {};

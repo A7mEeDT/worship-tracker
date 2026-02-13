@@ -12,6 +12,7 @@ import MainSitePage from "./pages/MainSitePage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
+import AdminQuestionsPage from "./pages/admin/AdminQuestionsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="questions" element={<AdminQuestionsPage />} />
               <Route path="notifications" element={<AdminNotificationsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -4,10 +4,14 @@ export const PRAYERS = ["الفجر", "الظهر", "العصر", "المغرب"
 export type PrayerName = typeof PRAYERS[number];
 
 export interface PrayerData {
-  jamaah: boolean;
+  jamaahHome: boolean;
+  jamaahMosque: boolean;
+  qada: boolean;
   fard: boolean;
   sunnah: boolean;
   khatm: boolean;
+  // Legacy field used by older deployments; mapped to `jamaahMosque` when loading.
+  jamaah?: boolean;
 }
 
 export interface Wird {

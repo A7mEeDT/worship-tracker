@@ -7,9 +7,10 @@ import QuranTab from "@/components/QuranTab";
 import ZikrTab from "@/components/ZikrTab";
 import DuaTab from "@/components/DuaTab";
 import ReportTab from "@/components/ReportTab";
+import QuestionsTab from "@/components/QuestionsTab";
 import { Save, AlertTriangle, Star } from "lucide-react";
 
-type TabId = "prayer" | "azkar" | "quran" | "zikr" | "duas" | "report";
+type TabId = "prayer" | "azkar" | "quran" | "zikr" | "duas" | "questions" | "report";
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: "prayer", label: "الصلوات", icon: "🕌" },
@@ -17,6 +18,7 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: "quran", label: "القرآن", icon: "📖" },
   { id: "zikr", label: "الأذكار", icon: "🔢" },
   { id: "duas", label: "أدعية", icon: "🤲" },
+  { id: "questions", label: "الأسئلة", icon: "❓" },
   { id: "report", label: "التقارير", icon: "📊" },
 ];
 
@@ -29,16 +31,18 @@ const Index = () => {
   const points = data.calculatePoints();
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-gold/10 pb-10">
       {/* Header */}
       <header className="gradient-header pattern-bg text-primary-foreground py-8 px-4 mb-6">
-        <div className="max-w-2xl mx-auto text-center">
+        <div className="max-w-3xl mx-auto text-center">
           <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-2">📘 متتبع العبادات</h1>
           <p className="text-primary-foreground/70 text-sm">سجّل عباداتك اليومية واكسب النقاط</p>
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-3xl mx-auto px-4">
+        {/* Frame */}
+        <div className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-xl backdrop-blur-sm sm:p-7">
         {/* Lock alert */}
         <AnimatePresence>
           {locked && (
@@ -128,6 +132,9 @@ const Index = () => {
             {activeTab === "duas" && (
               <DuaTab duas={data.duas} addDua={data.addDua} deleteDua={data.deleteDua} locked={locked} />
             )}
+            {activeTab === "questions" && (
+              <QuestionsTab />
+            )}
             {activeTab === "report" && (
               <ReportTab
                 getReports={data.getReports}
@@ -164,6 +171,7 @@ const Index = () => {
         {data.saveStatus && (
           <p className="text-center mt-3 text-sm text-muted-foreground">{data.saveStatus}</p>
         )}
+        </div>
       </div>
     </div>
   );

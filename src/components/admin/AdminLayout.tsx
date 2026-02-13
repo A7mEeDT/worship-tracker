@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Bell, LayoutDashboard, LogOut, Menu, ShieldCheck, Users } from "lucide-react";
+import { Bell, HelpCircle, LayoutDashboard, LogOut, Menu, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/questions", label: "Questions", icon: HelpCircle },
   { to: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 

@@ -59,7 +59,9 @@ function sanitizePrayers(rawPrayers) {
     }
 
     result[sanitizeText(name, 60)] = {
-      jamaah: Boolean(state.jamaah),
+      jamaahHome: Boolean(state.jamaahHome),
+      jamaahMosque: Boolean(state.jamaahMosque ?? state.jamaah),
+      qada: Boolean(state.qada),
       fard: Boolean(state.fard),
       sunnah: Boolean(state.sunnah),
       khatm: Boolean(state.khatm),

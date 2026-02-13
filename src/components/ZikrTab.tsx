@@ -45,6 +45,10 @@ const ZikrTab = ({ zikrs, zikrTotals, setZikrTotals, addZikr, deleteZikr, locked
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <div className="rounded-2xl border border-border/50 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+        ملاحظة: تبويب الأذكار للمتابعة والتحفيز فقط ولا يتم احتساب نقاطه ضمن مجموع النقاط الكلي.
+      </div>
+
       {/* Add new */}
       <div className="flex flex-wrap gap-3 mb-2">
         <input
