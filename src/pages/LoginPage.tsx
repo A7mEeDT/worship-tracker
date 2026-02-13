@@ -43,37 +43,42 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-amber-50 via-orange-100 to-rose-200 px-4 py-10">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-amber-50 via-orange-100 to-rose-200 px-4 py-6 sm:py-10">
       <div className="pointer-events-none absolute inset-0 opacity-70">
         <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/50 blur-3xl" />
         <div className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-amber-200/60 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.75),transparent_55%)]" />
       </div>
 
-      <div className="relative mx-auto grid max-w-5xl gap-8 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-2xl backdrop-blur md:grid-cols-[1.15fr_1fr] md:p-10">
-        <div className="rounded-2xl border border-white/70 bg-gradient-to-br from-white/70 via-white/50 to-amber-100/60 p-6 md:p-8">
+      <div className="relative mx-auto grid max-w-5xl gap-6 rounded-3xl border border-white/60 bg-white/70 p-5 shadow-2xl backdrop-blur sm:gap-8 sm:p-6 md:grid-cols-[1.15fr_1fr] md:p-10">
+        <div className="order-2 rounded-2xl border border-white/70 bg-gradient-to-br from-white/70 via-white/50 to-amber-100/60 p-5 sm:p-6 md:order-1 md:p-8">
           <p className="text-xs font-semibold tracking-[0.22em] text-amber-700/80">ثيم شروق الشمس</p>
           <h1 className="mt-3 flex items-center gap-3 font-heading text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
             <Sunrise size={28} className="text-amber-600" />
             متتبع العبادات
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-700/80">
+          <p className="mt-4 hidden max-w-md text-sm leading-relaxed text-slate-700/80 sm:block">
             سجل عباداتك اليومية وابدأ باستخدام حسابك. الصلاحيات (مستخدم/مشرف) يتم فرضها من جهة الخادم لحماية النظام.
           </p>
 
-          <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-300/70 bg-amber-200/40 px-4 py-2 text-xs font-semibold tracking-wide text-amber-900/80">
+          <div className="mt-6 hidden items-center gap-2 rounded-full border border-amber-300/70 bg-amber-200/40 px-4 py-2 text-xs font-semibold tracking-wide text-amber-900/80 sm:inline-flex">
             <ShieldCheck size={14} />
             جلسة آمنة + صلاحيات + سجل نشاط
           </div>
         </div>
 
-        <form className="rounded-2xl border border-white/70 bg-white/60 p-6 md:p-8" onSubmit={handleSubmit} dir="rtl">
+        <form className="order-1 rounded-2xl border border-white/70 bg-white/60 p-5 md:order-2 md:p-8" onSubmit={handleSubmit} dir="rtl">
           <h2 className="font-heading text-2xl font-bold text-slate-900">تسجيل الدخول</h2>
           <p className="mt-1 text-sm text-slate-700/70">استخدم بيانات حسابك (مستخدم/مشرف).</p>
 
-          <label className="mt-6 block text-xs font-semibold tracking-wider text-slate-700">اسم المستخدم</label>
+          <label className="mt-6 block text-sm font-semibold tracking-wide text-slate-700">اسم المستخدم</label>
           <input
-            className="mt-2 w-full rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-amber-300/70 transition focus:ring-2"
+            dir="ltr"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            className="mt-2 w-full h-12 rounded-2xl border border-white/80 bg-white/80 px-4 py-3.5 text-base text-slate-900 outline-none ring-amber-300/70 transition placeholder:text-slate-500/70 focus:ring-2"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             autoComplete="username"
@@ -81,10 +86,14 @@ export default function LoginPage() {
             required
           />
 
-          <label className="mt-4 block text-xs font-semibold tracking-wider text-slate-700">كلمة المرور</label>
+          <label className="mt-4 block text-sm font-semibold tracking-wide text-slate-700">كلمة المرور</label>
           <input
             type="password"
-            className="mt-2 w-full rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-amber-300/70 transition focus:ring-2"
+            dir="ltr"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            className="mt-2 w-full h-12 rounded-2xl border border-white/80 bg-white/80 px-4 py-3.5 text-base text-slate-900 outline-none ring-amber-300/70 transition focus:ring-2"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"
@@ -93,10 +102,14 @@ export default function LoginPage() {
 
           {otpRequired && (
             <>
-              <label className="mt-4 block text-xs font-semibold tracking-wider text-slate-700">رمز المصادقة الثنائية (6 أرقام)</label>
+              <label className="mt-4 block text-sm font-semibold tracking-wide text-slate-700">رمز المصادقة الثنائية (6 أرقام)</label>
               <input
+                dir="ltr"
                 inputMode="numeric"
-                className="mt-2 w-full rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-amber-300/70 transition focus:ring-2"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className="mt-2 w-full h-12 rounded-2xl border border-white/80 bg-white/80 px-4 py-3.5 text-base text-slate-900 outline-none ring-amber-300/70 transition focus:ring-2"
                 value={otp}
                 onChange={(event) => setOtp(event.target.value.replace(/[^\d]/gu, "").slice(0, 6))}
                 autoComplete="one-time-code"
@@ -115,7 +128,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-4 py-3.5 text-base font-bold text-white shadow-lg transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "جارٍ تسجيل الدخول..." : "دخول"}
           </button>

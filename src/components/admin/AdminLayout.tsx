@@ -5,14 +5,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { roleLabel } from "@/lib/error-messages";
 
 const navItems = [
-  { to: "/admin/dashboard", label: "Ù„ÙˆØ­Ø© Ø§Ù„Ù…Ø±Ø§Ù‚Ø¨Ø©", icon: LayoutDashboard },
+  { to: "/admin/dashboard", label: "لوحة المراقبة", icon: LayoutDashboard },
   { to: "/admin/goals", label: "الأهداف", icon: Target },
-  { to: "/admin/users", label: "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙˆÙ†", icon: Users },
-  { to: "/admin/questions", label: "Ø§Ù„Ø£Ø³Ø¦Ù„Ø©", icon: HelpCircle },
-  { to: "/admin/notifications", label: "Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª", icon: Bell },
-  { to: "/admin/audit", label: "Ø³Ø¬Ù„ Ø§Ù„ØªØ¯Ù‚ÙŠÙ‚", icon: ScrollText },
-  { to: "/admin/storage", label: "Ø§Ù„ØªØ®Ø²ÙŠÙ†", icon: HardDrive },
-  { to: "/admin/security", label: "Ø§Ù„Ø£Ù…Ø§Ù†", icon: KeyRound },
+  { to: "/admin/users", label: "المستخدمون", icon: Users },
+  { to: "/admin/questions", label: "الأسئلة", icon: HelpCircle },
+  { to: "/admin/notifications", label: "الإشعارات", icon: Bell },
+  { to: "/admin/audit", label: "سجل التدقيق", icon: ScrollText },
+  { to: "/admin/storage", label: "التخزين", icon: HardDrive },
+  { to: "/admin/security", label: "الأمان", icon: KeyRound },
 ];
 
 export default function AdminLayout() {
@@ -35,19 +35,21 @@ export default function AdminLayout() {
             <button
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/25 text-white md:hidden"
               onClick={() => setMobileOpen((value) => !value)}
-              aria-label="ÙØªØ­/Ø¥ØºÙ„Ø§Ù‚ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©"
+              aria-label="فتح/إغلاق قائمة الإدارة"
             >
               <Menu size={18} />
             </button>
             <Link to="/admin/dashboard" className="flex items-center gap-2 text-sm font-semibold tracking-widest">
               <ShieldCheck size={16} />
-              Ù„ÙˆØ­Ø© Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©
+              لوحة الإدارة
             </Link>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <p className="text-xs tracking-wider text-cyan-200">Ù…Ø³Ø¬Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„</p>
-              <p className="text-sm font-semibold">{user?.username} â€¢ {roleLabel(user?.role)}</p>
+              <p className="text-xs tracking-wider text-cyan-200">مسجل الدخول</p>
+              <p className="text-sm font-semibold">
+                {user?.username} • {roleLabel(user?.role)}
+              </p>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
               {initials}
@@ -57,7 +59,7 @@ export default function AdminLayout() {
               onClick={handleLogout}
             >
               <LogOut size={14} />
-              ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+              تسجيل الخروج
             </button>
           </div>
         </div>

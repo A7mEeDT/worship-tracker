@@ -19,7 +19,7 @@ const WINDOWS: { key: ReportWindow; label: string }[] = [
   { key: "7d", label: "7D" },
   { key: "1w", label: "1W" },
   { key: "1m", label: "1M" },
-  { key: "all", label: "Ø§Ù„ÙƒÙ„" },
+  { key: "all", label: "الكل" },
 ];
 
 function toLocalDateOnly(date: Date) {
@@ -310,7 +310,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
   };
 
   const handleClearMine = async () => {
-    if (!confirm("Ø³ÙŠØªÙ… Ø­Ø°Ù Ø³Ø¬Ù„ Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ± Ø§Ù„Ø®Ø§Øµ Ø¨Ùƒ. Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©ØŸ")) {
+    if (!confirm("سيتم حذف سجل التقارير الخاص بك. هل تريد المتابعة؟")) {
       return;
     }
 
@@ -346,7 +346,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
       <div className="rounded-2xl border border-border/50 p-5 bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h3 className="flex items-center gap-2 font-heading text-xl font-bold text-primary">
-            <BarChart3 size={22} /> Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ±
+            <BarChart3 size={22} /> التقارير
           </h3>
           <div className="flex items-center gap-2">
             <button
@@ -364,7 +364,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-60"
             >
               <Download size={14} />
-              {exporting ? "Ø¬Ø§Ø±Ù Ø§Ù„ØªØµØ¯ÙŠØ±..." : "ØªØµØ¯ÙŠØ± Excel"}
+              {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
             </button>
             <button
               onClick={() => void handleClearMine()}
@@ -399,7 +399,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               onChange={(event) => setSelectedUsername(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              <option value="all">ÙƒÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª</option>
+              <option value="all">كل الحسابات</option>
               {usernames.map((username) => (
                 <option key={username} value={username}>
                   {username}
@@ -584,11 +584,11 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
                   <Calendar size={18} className="text-primary" />
-                  Ø®Ø±ÙŠØ·Ø© Ø§Ù„Ø¥Ù†Ø¬Ø§Ø² (Ø¢Ø®Ø± 12 Ø£Ø³Ø¨ÙˆØ¹)
+                  خريطة الإنجاز (آخر 12 أسبوع)
                 </h4>
                 {isAdmin && selectedUsername === "all" ? (
                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                    Ù…Ø¬Ù…Ù‘Ø¹ Ù„ÙƒÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª
+                    مجمّع لكل الحسابات
                   </span>
                 ) : null}
               </div>
@@ -600,7 +600,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
                       {week.days.map((day) => (
                         <div
                           key={day.dateKey}
-                          title={`${day.dateKey} â€¢ ${day.value} Ù†Ù‚Ø·Ø©`}
+                          title={`${day.dateKey} • ${day.value} نقطة`}
                           className={`h-3 w-3 rounded-sm border ${heatCellClass(day.value)}`}
                         />
                       ))}
@@ -610,7 +610,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               </div>
 
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Ø£Ù‚Ù„</span>
+                <span>أقل</span>
                 {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
                   <span
                     key={ratio}
@@ -619,12 +619,12 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
                     }`}
                   />
                 ))}
-                <span>Ø£ÙƒØ«Ø±</span>
+                <span>أكثر</span>
               </div>
             </div>
 
             {visibleReports.length === 0 ? (
-              <div className="text-center text-muted-foreground py-12 text-sm">Ù„Ø§ ØªÙˆØ¬Ø¯ ØªÙ‚Ø§Ø±ÙŠØ± Ø¶Ù…Ù† Ø§Ù„ÙØªØ±Ø© Ø§Ù„Ù…Ø­Ø¯Ø¯Ø©.</div>
+              <div className="text-center text-muted-foreground py-12 text-sm">لا توجد تقارير ضمن الفترة المحددة.</div>
             ) : (
               <div className="mt-4 space-y-3">
                 {visibleReports.map((report, index) => (
@@ -642,11 +642,11 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
                         </div>
                         <div className="font-bold text-sm">{report.date}</div>
                       </div>
-                      <div className="text-sm font-semibold text-primary">{report.totalPoints} Ù†Ù‚Ø·Ø©</div>
+                      <div className="text-sm font-semibold text-primary">{report.totalPoints} نقطة</div>
                     </div>
 
                     <div className="text-sm text-foreground mb-2">
-                      {report.childName || "Ø¨Ø¯ÙˆÙ† Ø§Ø³Ù…"}
+                      {report.childName || "بدون اسم"}
                       {isAdmin && (
                         <span className="mr-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           {report.username}

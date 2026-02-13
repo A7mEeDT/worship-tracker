@@ -2,7 +2,6 @@ import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorshipData } from "@/hooks/use-worship-data";
 import PrayerTab from "@/components/PrayerTab";
-import MobileBottomNav, { type BottomNavItem } from "@/components/main/MobileBottomNav";
 import { formatDateTime } from "@/lib/format";
 import { t } from "@/i18n";
 import { AlertCircle, CheckCircle2, Save, AlertTriangle, Star } from "lucide-react";
@@ -16,7 +15,7 @@ const DuaTab = lazy(() => import("@/components/DuaTab"));
 const QuestionsTab = lazy(() => import("@/components/QuestionsTab"));
 const ReportTab = lazy(() => import("@/components/ReportTab"));
 
-const tabs: BottomNavItem<TabId>[] = [
+const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: "prayer", label: "الصلوات", icon: "🕌" },
   { id: "azkar", label: "الورد", icon: "📿" },
   { id: "quran", label: "القرآن", icon: "📖" },
@@ -63,7 +62,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-gold/10 pb-28 sm:pb-10">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-gold/10 pb-10">
       {/* Header */}
       <header className="gradient-header pattern-bg text-primary-foreground py-8 px-4 mb-6">
         <div className="max-w-3xl mx-auto text-center">
@@ -146,7 +145,7 @@ const Index = () => {
         </div>
 
         {/* Tabs */}
-        <div className="hidden sm:flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -158,7 +157,7 @@ const Index = () => {
                 }`}
             >
               <span>{tab.icon}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -224,7 +223,7 @@ const Index = () => {
         </motion.div>
 
         {/* Save */}
-        <div className="sticky bottom-24 sm:static mt-4 z-30">
+        <div className="sticky bottom-4 sm:static mt-4 z-30">
           <div className="rounded-2xl border border-border/60 bg-card/85 p-2 shadow-lg backdrop-blur sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
             <button
               onClick={data.saveDay}
@@ -244,8 +243,6 @@ const Index = () => {
         </div>
         </div>
       </div>
-
-      <MobileBottomNav tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
     </div>
   );
 };
