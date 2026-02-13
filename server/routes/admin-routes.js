@@ -29,6 +29,7 @@ export function createAdminRouter({
   credentialsService,
   notificationService,
   twoFactorService,
+  goalsService,
   auditService,
   getRequestIpAddress,
 }) {
@@ -429,6 +430,45 @@ export function createAdminRouter({
       });
 
       res.status(201).json({ result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/system/goals", async (req, res, next) => {
+    try {
+      const goals = await goalsService.getGlobalGoals();
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: "admin_system_goals_view",
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json({ goals });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.put("/system/goals", async (req, res, next) => {
+    try {
+      const dailyGoalPoints = req.body?.dailyGoalPoints;
+      const weeklyGoalPoints = req.body?.weeklyGoalPoints;
+
+      const updated = await goalsService.updateGlobalGoals({
+        dailyGoalPoints,
+        weeklyGoalPoints,
+        updatedBy: req.user.username,
+      });
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_set_goals:daily_${updated.dailyGoalPoints}:weekly_${updated.weeklyGoalPoints}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json({ goals: updated });
     } catch (error) {
       next(error);
     }

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Download, RefreshCw, Trash2, BarChart3, UserRound, Flame, Target, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiGet } from "@/lib/api";
 import { getArabicErrorMessage } from "@/lib/error-messages";
 import type { ReportRecord, ReportWindow } from "@/types/reports";
+import type { GlobalGoals } from "@/types/goals";
 
 interface Props {
   getReports: (window: ReportWindow, usernameFilter?: string) => Promise<ReportRecord[]>;
@@ -17,7 +19,7 @@ const WINDOWS: { key: ReportWindow; label: string }[] = [
   { key: "7d", label: "7D" },
   { key: "1w", label: "1W" },
   { key: "1m", label: "1M" },
-  { key: "all", label: "الكل" },
+  { key: "all", label: "Ø§Ù„ÙƒÙ„" },
 ];
 
 function toLocalDateOnly(date: Date) {
@@ -56,25 +58,24 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
+  const [goals, setGoals] = useState<GlobalGoals | null>(null);
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [goalsError, setGoalsError] = useState("");
 
-  const goalStorageKey = `weekly_goal_points:${String(user?.username ?? "me").toLowerCase()}`;
-  const [weeklyGoal, setWeeklyGoal] = useState<number>(() => {
-    try {
-      const raw = localStorage.getItem(goalStorageKey);
-      const parsed = raw ? Number(raw) : NaN;
-      return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 250;
-    } catch {
-      return 250;
-    }
-  });
+  const loadGoals = useCallback(async () => {
+    setGoalsLoading(true);
+    setGoalsError("");
 
-  useEffect(() => {
     try {
-      localStorage.setItem(goalStorageKey, String(weeklyGoal));
-    } catch {
-      // Ignore storage errors.
+      const response = await apiGet<{ goals: GlobalGoals }>("/api/goals");
+      setGoals(response.goals);
+    } catch (requestError) {
+      setGoalsError(getArabicErrorMessage(requestError));
+      setGoals(null);
+    } finally {
+      setGoalsLoading(false);
     }
-  }, [goalStorageKey, weeklyGoal]);
+  }, []);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -94,6 +95,10 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
   useEffect(() => {
     void loadReports();
   }, [loadReports]);
+
+  useEffect(() => {
+    void loadGoals();
+  }, [loadGoals]);
 
   const usernames = useMemo(() => {
     if (!isAdmin) {
@@ -252,8 +257,26 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
     return { weeks, maxValue };
   }, [pointsByDate]);
 
+  const dailyGoalValue = Math.max(0, Math.trunc(Number(goals?.dailyGoalPoints ?? 0)));
+  const weeklyGoalValue = Math.max(0, Math.trunc(Number(goals?.weeklyGoalPoints ?? 0)));
+
+  const todayKey = toLocalDateOnly(new Date());
+  const todayPoints = pointsByDate.get(todayKey) ?? 0;
+
+  const dailyGoalProgress = useMemo(() => {
+    const goal = Math.max(0, Math.trunc(dailyGoalValue));
+    if (!goal) {
+      return { goal, percent: 0 };
+    }
+
+    return {
+      goal,
+      percent: Math.min(100, Math.round((todayPoints / goal) * 100)),
+    };
+  }, [dailyGoalValue, todayPoints]);
+
   const weeklyGoalProgress = useMemo(() => {
-    const goal = Math.max(0, Math.trunc(weeklyGoal));
+    const goal = Math.max(0, Math.trunc(weeklyGoalValue));
     if (!goal) {
       return { goal, percent: 0 };
     }
@@ -261,7 +284,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
       goal,
       percent: Math.min(100, Math.round((weekSummary.total / goal) * 100)),
     };
-  }, [weekSummary.total, weeklyGoal]);
+  }, [weekSummary.total, weeklyGoalValue]);
 
   const totals = useMemo(() => {
     let sum = 0;
@@ -287,7 +310,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
   };
 
   const handleClearMine = async () => {
-    if (!confirm("سيتم حذف سجل التقارير الخاص بك. هل تريد المتابعة؟")) {
+    if (!confirm("Ø³ÙŠØªÙ… Ø­Ø°Ù Ø³Ø¬Ù„ Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ± Ø§Ù„Ø®Ø§Øµ Ø¨Ùƒ. Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©ØŸ")) {
       return;
     }
 
@@ -323,11 +346,14 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
       <div className="rounded-2xl border border-border/50 p-5 bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h3 className="flex items-center gap-2 font-heading text-xl font-bold text-primary">
-            <BarChart3 size={22} /> التقارير
+            <BarChart3 size={22} /> Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ±
           </h3>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => void loadReports()}
+              onClick={() => {
+                void loadReports();
+                void loadGoals();
+              }}
               className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted transition-colors"
             >
               <RefreshCw size={14} />
@@ -338,7 +364,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-60"
             >
               <Download size={14} />
-              {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
+              {exporting ? "Ø¬Ø§Ø±Ù Ø§Ù„ØªØµØ¯ÙŠØ±..." : "ØªØµØ¯ÙŠØ± Excel"}
             </button>
             <button
               onClick={() => void handleClearMine()}
@@ -373,7 +399,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               onChange={(event) => setSelectedUsername(event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              <option value="all">كل الحسابات</option>
+              <option value="all">ÙƒÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª</option>
               {usernames.map((username) => (
                 <option key={username} value={username}>
                   {username}
@@ -389,9 +415,16 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
           </div>
         )}
 
+        {goalsError && (
+          <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+            {goalsError}
+          </div>
+        )}
+
         {loading ? (
           <div className="py-6">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
             </div>
@@ -404,90 +437,158 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
         ) : (
           <>
             <div className="grid gap-3 md:grid-cols-3">
-              <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-xs font-semibold tracking-wider text-muted-foreground">السلسلة</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Flame size={18} className="text-amber-600" />
-                  <p className="text-2xl font-black text-foreground">{viewingSingleUser ? currentStreak : "--"}</p>
-                  <span className="text-sm text-muted-foreground">يوم</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  أفضل سلسلة: <span className="font-semibold text-foreground">{viewingSingleUser ? bestStreak : "--"}</span> يوم
-                </p>
-              </article>
-
-              <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-xs font-semibold tracking-wider text-muted-foreground">نقاط هذا الأسبوع</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Calendar size={18} className="text-primary" />
-                  <p className="text-2xl font-black text-foreground">{weekSummary.total}</p>
-                  <span className="text-sm text-muted-foreground">نقطة</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {toLocalDateOnly(weekSummary.start)} إلى {toLocalDateOnly(weekSummary.end)}
-                </p>
-              </article>
-
-              {!isAdmin ? (
-                <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-xs font-semibold tracking-wider text-muted-foreground">الهدف الأسبوعي</p>
-                    <div className="flex items-center gap-2">
-                      <Target size={16} className="text-emerald-700" />
-                      <input
-                        type="number"
-                        min={1}
-                        max={100000}
-                        value={weeklyGoal}
-                        onChange={(e) => setWeeklyGoal(Math.max(1, Math.trunc(Number(e.target.value || 1))))}
-                        className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-                        aria-label="الهدف الأسبوعي بالنقاط"
-                      />
+              {viewingSingleUser ? (
+                <>
+                  <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+                    <p className="text-xs font-semibold tracking-wider text-muted-foreground">السلسلة</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Flame size={18} className="text-amber-600" />
+                      <p className="text-2xl font-black text-foreground">{currentStreak ?? 0}</p>
+                      <span className="text-sm text-muted-foreground">يوم</span>
                     </div>
-                  </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      أفضل سلسلة: <span className="font-semibold text-foreground">{bestStreak ?? 0}</span> يوم
+                    </p>
+                  </article>
 
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {weekSummary.total} / {weeklyGoalProgress.goal} نقطة
-                      </span>
-                      <span className="font-semibold text-foreground">{weeklyGoalProgress.percent}%</span>
+                  <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-semibold tracking-wider text-muted-foreground">الهدف اليومي</p>
+                      <div className="flex items-center gap-2">
+                        <Target size={16} className="text-emerald-700" />
+                        {goalsLoading ? (
+                          <Skeleton className="h-5 w-20" />
+                        ) : (
+                          <span className="text-xs font-bold text-foreground">
+                            {dailyGoalValue ? `${dailyGoalValue} نقطة` : "غير محدد"}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${weeklyGoalProgress.percent}%` }}
-                      />
+
+                    {goalsLoading ? (
+                      <div className="mt-3 space-y-2">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-2 w-full" />
+                      </div>
+                    ) : dailyGoalProgress.goal ? (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            {todayPoints} / {dailyGoalProgress.goal} نقطة
+                          </span>
+                          <span className="font-semibold text-foreground">{dailyGoalProgress.percent}%</span>
+                        </div>
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-emerald-500"
+                            style={{ width: `${dailyGoalProgress.percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-muted-foreground">لا يوجد هدف يومي محدد حالياً. نقاط اليوم: {todayPoints}</p>
+                    )}
+                  </article>
+
+                  <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-semibold tracking-wider text-muted-foreground">الهدف الأسبوعي</p>
+                      <div className="flex items-center gap-2">
+                        <Target size={16} className="text-emerald-700" />
+                        {goalsLoading ? (
+                          <Skeleton className="h-5 w-20" />
+                        ) : (
+                          <span className="text-xs font-bold text-foreground">
+                            {weeklyGoalValue ? `${weeklyGoalValue} نقطة` : "غير محدد"}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </article>
+
+                    {goalsLoading ? (
+                      <div className="mt-3 space-y-2">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-2 w-full" />
+                      </div>
+                    ) : weeklyGoalProgress.goal ? (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            {weekSummary.total} / {weeklyGoalProgress.goal} نقطة
+                          </span>
+                          <span className="font-semibold text-foreground">{weeklyGoalProgress.percent}%</span>
+                        </div>
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-emerald-500"
+                            style={{ width: `${weeklyGoalProgress.percent}%` }}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {toLocalDateOnly(weekSummary.start)} إلى {toLocalDateOnly(weekSummary.end)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        لا يوجد هدف أسبوعي محدد حالياً. نقاط هذا الأسبوع: {weekSummary.total}
+                      </p>
+                    )}
+                  </article>
+                </>
               ) : (
-                <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-xs font-semibold tracking-wider text-muted-foreground">ملخص الفترة</p>
-                  <div className="mt-2 grid gap-1 text-sm text-foreground">
-                    <div>
-                      إجمالي النقاط: <span className="font-black">{totals.sum}</span>
+                <>
+                  <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+                    <p className="text-xs font-semibold tracking-wider text-muted-foreground">الأهداف العامة</p>
+                    <div className="mt-2 grid gap-1 text-sm text-foreground">
+                      <div>
+                        الهدف اليومي: {goalsLoading ? "--" : dailyGoalValue || "--"} نقطة
+                      </div>
+                      <div>
+                        الهدف الأسبوعي: {goalsLoading ? "--" : weeklyGoalValue || "--"} نقطة
+                      </div>
                     </div>
-                    <div>
-                      متوسط النقاط: <span className="font-black">{totals.average}</span>
+                    <p className="mt-2 text-xs text-muted-foreground">يمكن تعديلها من Admin → الأهداف.</p>
+                  </article>
+
+                  <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+                    <p className="text-xs font-semibold tracking-wider text-muted-foreground">نقاط هذا الأسبوع</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Calendar size={18} className="text-primary" />
+                      <p className="text-2xl font-black text-foreground">{weekSummary.total}</p>
+                      <span className="text-sm text-muted-foreground">نقطة</span>
                     </div>
-                    <div>
-                      عدد التقارير: <span className="font-black">{totals.count}</span>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {toLocalDateOnly(weekSummary.start)} إلى {toLocalDateOnly(weekSummary.end)}
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+                    <p className="text-xs font-semibold tracking-wider text-muted-foreground">ملخص الفترة</p>
+                    <div className="mt-2 grid gap-1 text-sm text-foreground">
+                      <div>
+                        إجمالي النقاط: <span className="font-black">{totals.sum}</span>
+                      </div>
+                      <div>
+                        متوسط النقاط: <span className="font-black">{totals.average}</span>
+                      </div>
+                      <div>
+                        عدد التقارير: <span className="font-black">{totals.count}</span>
+                      </div>
                     </div>
-                  </div>
-                </article>
+                  </article>
+                </>
               )}
             </div>
-
             <div className="mt-4 rounded-2xl border border-border/50 bg-muted/10 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
                   <Calendar size={18} className="text-primary" />
-                  خريطة الإنجاز (آخر 12 أسبوع)
+                  Ø®Ø±ÙŠØ·Ø© Ø§Ù„Ø¥Ù†Ø¬Ø§Ø² (Ø¢Ø®Ø± 12 Ø£Ø³Ø¨ÙˆØ¹)
                 </h4>
                 {isAdmin && selectedUsername === "all" ? (
                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                    مجمّع لكل الحسابات
+                    Ù…Ø¬Ù…Ù‘Ø¹ Ù„ÙƒÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª
                   </span>
                 ) : null}
               </div>
@@ -499,7 +600,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
                       {week.days.map((day) => (
                         <div
                           key={day.dateKey}
-                          title={`${day.dateKey} • ${day.value} نقطة`}
+                          title={`${day.dateKey} â€¢ ${day.value} Ù†Ù‚Ø·Ø©`}
                           className={`h-3 w-3 rounded-sm border ${heatCellClass(day.value)}`}
                         />
                       ))}
@@ -509,7 +610,7 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
               </div>
 
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <span>أقل</span>
+                <span>Ø£Ù‚Ù„</span>
                 {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
                   <span
                     key={ratio}
@@ -518,12 +619,12 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
                     }`}
                   />
                 ))}
-                <span>أكثر</span>
+                <span>Ø£ÙƒØ«Ø±</span>
               </div>
             </div>
 
             {visibleReports.length === 0 ? (
-              <div className="text-center text-muted-foreground py-12 text-sm">لا توجد تقارير ضمن الفترة المحددة.</div>
+              <div className="text-center text-muted-foreground py-12 text-sm">Ù„Ø§ ØªÙˆØ¬Ø¯ ØªÙ‚Ø§Ø±ÙŠØ± Ø¶Ù…Ù† Ø§Ù„ÙØªØ±Ø© Ø§Ù„Ù…Ø­Ø¯Ø¯Ø©.</div>
             ) : (
               <div className="mt-4 space-y-3">
                 {visibleReports.map((report, index) => (
@@ -541,11 +642,11 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
                         </div>
                         <div className="font-bold text-sm">{report.date}</div>
                       </div>
-                      <div className="text-sm font-semibold text-primary">{report.totalPoints} نقطة</div>
+                      <div className="text-sm font-semibold text-primary">{report.totalPoints} Ù†Ù‚Ø·Ø©</div>
                     </div>
 
                     <div className="text-sm text-foreground mb-2">
-                      {report.childName || "بدون اسم"}
+                      {report.childName || "Ø¨Ø¯ÙˆÙ† Ø§Ø³Ù…"}
                       {isAdmin && (
                         <span className="mr-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           {report.username}
@@ -573,3 +674,4 @@ const ReportTab = ({ getReports, exportReports, clearAllData }: Props) => {
 };
 
 export default ReportTab;
+

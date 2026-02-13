@@ -16,6 +16,7 @@ export const FILE_NAMES = Object.freeze({
   PRIMARY_ADMINS: "primary_admins.txt",
   DEACTIVATED_USERS: "deactivated_users.txt",
   ADMIN_2FA: "admin_2fa.txt",
+  WORSHIP_GOALS: "worship_goals.txt",
   WIRD_CONFIG: "wird_config.txt",
   WORSHIP_REPORTS: "worship_reports.txt",
   QUESTION_GROUPS: "question_groups.txt",

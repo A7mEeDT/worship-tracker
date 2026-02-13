@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from "./middleware/error-middleware.js"
 import { createActivityRouter } from "./routes/activity-routes.js";
 import { createAdminRouter } from "./routes/admin-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
+import { createGoalsRouter } from "./routes/goals-routes.js";
 import { createReportRouter } from "./routes/report-routes.js";
 import { createQuestionRouter } from "./routes/question-routes.js";
 import { createAdminQuestionRouter } from "./routes/admin-question-routes.js";
@@ -16,6 +17,7 @@ import { createAuditService } from "./services/audit-service.js";
 import { getRequestIpAddress, initializeActivityLog } from "./services/activity-service.js";
 import * as authService from "./services/auth-service.js";
 import * as credentialsService from "./services/credential-service.js";
+import * as goalsService from "./services/goals-service.js";
 import { createNotificationService } from "./services/notification-service.js";
 import { startBackupScheduler } from "./services/backup-service.js";
 import * as twoFactorService from "./services/twofactor-service.js";
@@ -31,6 +33,7 @@ await twoFactorService.initializeTwoFactorStore();
 await initializeActivityLog();
 await wirdConfigService.initializeWirdConfigStore();
 await reportService.initializeReportStore();
+await goalsService.initializeGoalsStore();
 await questionService.initializeQuestionStore();
 
 const notificationService = createNotificationService({
@@ -92,6 +95,14 @@ app.use(
 );
 
 app.use(
+  "/api/goals",
+  createGoalsRouter({
+    authMiddleware,
+    goalsService,
+  }),
+);
+
+app.use(
   "/api/admin",
   createAdminRouter({
     authMiddleware,
@@ -99,6 +110,7 @@ app.use(
     credentialsService,
     notificationService,
     twoFactorService,
+    goalsService,
     auditService,
     getRequestIpAddress,
   }),

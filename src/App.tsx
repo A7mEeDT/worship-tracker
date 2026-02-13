@@ -20,6 +20,7 @@ const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotificatio
 const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const AdminStoragePage = lazy(() => import("./pages/admin/AdminStoragePage"));
 const AdminSecurityPage = lazy(() => import("./pages/admin/AdminSecurityPage"));
+const AdminGoalsPage = lazy(() => import("./pages/admin/AdminGoalsPage"));
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
               >
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="goals" element={<AdminGoalsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="questions" element={<AdminQuestionsPage />} />
                 <Route path="notifications" element={<AdminNotificationsPage />} />
