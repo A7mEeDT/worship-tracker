@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ShieldCheck, Sunrise } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { getArabicErrorMessage } from "@/lib/error-messages";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
@@ -27,7 +28,7 @@ export default function LoginPage() {
       const defaultPath = currentUser.role === "user" ? "/" : "/admin/dashboard";
       navigate(from || defaultPath, { replace: true });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Login failed");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setSubmitting(false);
     }
@@ -43,13 +44,13 @@ export default function LoginPage() {
 
       <div className="relative mx-auto grid max-w-5xl gap-8 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-2xl backdrop-blur md:grid-cols-[1.15fr_1fr] md:p-10">
         <div className="rounded-2xl border border-white/70 bg-gradient-to-br from-white/70 via-white/50 to-amber-100/60 p-6 md:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700/80">Sunrise Theme</p>
+          <p className="text-xs font-semibold tracking-[0.22em] text-amber-700/80">ثيم شروق الشمس</p>
           <h1 className="mt-3 flex items-center gap-3 font-heading text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
             <Sunrise size={28} className="text-amber-600" />
             متتبع العبادات
           </h1>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-700/80">
-            سجل عباداتك اليومية، وابدأ باستخدام حسابك. الصلاحيات (Admin/User) يتم فرضها من جهة الخادم لحماية النظام.
+            سجل عباداتك اليومية وابدأ باستخدام حسابك. الصلاحيات (مستخدم/مشرف) يتم فرضها من جهة الخادم لحماية النظام.
           </p>
 
           <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-300/70 bg-amber-200/40 px-4 py-2 text-xs font-semibold tracking-wide text-amber-900/80">

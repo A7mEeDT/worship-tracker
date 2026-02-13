@@ -1,10 +1,15 @@
 import { Router } from "express";
+import { config } from "../config.js";
 import { ADMIN_ROLES, Roles } from "../constants.js";
 import {
   getActivityTimeline,
   getPerUserDistribution,
   parseDashboardWindow,
 } from "../services/analytics-service.js";
+import { runBackupOnce } from "../services/backup-service.js";
+import { createAuditLogService } from "../services/audit-log-service.js";
+import { getActivityLogPath } from "../services/activity-service.js";
+import { getStorageOverview } from "../services/storage-service.js";
 import { AppError } from "../utils/errors.js";
 
 function parseLimit(rawLimit, fallback = 100, max = 500) {
@@ -16,6 +21,8 @@ function parseLimit(rawLimit, fallback = 100, max = 500) {
   return Math.min(Math.trunc(value), max);
 }
 
+const AUDIT_LOG_TYPES = new Set(["user_activity", "admin_notifications"]);
+
 export function createAdminRouter({
   authMiddleware,
   credentialsService,
@@ -24,6 +31,11 @@ export function createAdminRouter({
   getRequestIpAddress,
 }) {
   const router = Router();
+
+  const auditLogService = createAuditLogService({
+    activityLogPath: getActivityLogPath(),
+    notificationsLogPath: notificationService.getNotificationsLogPath(),
+  });
 
   router.use(authMiddleware.authenticateRequest);
   router.use(authMiddleware.requireRoles(...ADMIN_ROLES));
@@ -178,6 +190,111 @@ export function createAdminRouter({
       }
     },
   );
+
+  router.get("/audit/logs", async (req, res, next) => {
+    try {
+      const type = String(req.query.type ?? "").trim();
+      if (!AUDIT_LOG_TYPES.has(type)) {
+        throw new AppError(400, "Invalid audit log type.", "INVALID_AUDIT_TYPE");
+      }
+      const limit = parseLimit(req.query.limit, 200, 1000);
+      const scanLimit = parseLimit(req.query.scanLimit, Math.max(500, limit * 5), 20000);
+
+      const entries = await auditLogService.listAuditEntries({
+        type,
+        limit,
+        scanLimit,
+        username: req.query.username,
+        actionContains: req.query.action,
+        from: req.query.from,
+        to: req.query.to,
+        before: req.query.before,
+      });
+
+      res.json({ entries });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/audit/logs/export.csv", async (req, res, next) => {
+    try {
+      const type = String(req.query.type ?? "").trim();
+      if (!AUDIT_LOG_TYPES.has(type)) {
+        throw new AppError(400, "Invalid audit log type.", "INVALID_AUDIT_TYPE");
+      }
+      const limit = parseLimit(req.query.limit, 2000, 20000);
+      const scanLimit = parseLimit(req.query.scanLimit, Math.max(500, limit * 2), 20000);
+
+      const csv = await auditLogService.exportAuditCsv({
+        type,
+        limit,
+        scanLimit,
+        username: req.query.username,
+        actionContains: req.query.action,
+        from: req.query.from,
+        to: req.query.to,
+        before: req.query.before,
+      });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/gu, "-");
+      const fileName = `audit-${type || "log"}-${timestamp}.csv`;
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_audit_export:${type || "unknown"}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+      res.status(200).send(csv);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/system/storage", async (req, res, next) => {
+    try {
+      const overview = await getStorageOverview({ dataDir: config.dataDir });
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: "admin_system_storage_view",
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json({
+        overview,
+        backupConfig: {
+          enabled: config.backupEnabled,
+          intervalMs: config.backupIntervalMs,
+          retentionDays: config.backupRetentionDays,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/system/backups/run", async (req, res, next) => {
+    try {
+      const result = await runBackupOnce({
+        dataDir: config.dataDir,
+        retentionDays: config.backupRetentionDays,
+      });
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_system_backup_run:copied_${result.copied}:pruned_${result.pruned}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.status(201).json({ result });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   return router;
 }

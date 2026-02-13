@@ -7,6 +7,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PageActivityTracker from "@/components/auth/PageActivityTracker";
+import { t } from "@/i18n";
 import LoginPage from "./pages/LoginPage";
 import MainSitePage from "./pages/MainSitePage";
 import NotFound from "./pages/NotFound";
@@ -16,6 +17,8 @@ const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage")
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminQuestionsPage = lazy(() => import("./pages/admin/AdminQuestionsPage"));
 const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotificationsPage"));
+const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
+const AdminStoragePage = lazy(() => import("./pages/admin/AdminStoragePage"));
 
 const queryClient = new QueryClient();
 
@@ -30,7 +33,7 @@ const App = () => (
           <Suspense
             fallback={
               <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
-                Loading...
+                {t("app_loading")}
               </div>
             }
           >
@@ -57,6 +60,8 @@ const App = () => (
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="questions" element={<AdminQuestionsPage />} />
                 <Route path="notifications" element={<AdminNotificationsPage />} />
+                <Route path="audit" element={<AdminAuditLogPage />} />
+                <Route path="storage" element={<AdminStoragePage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

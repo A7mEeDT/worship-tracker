@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BellRing, PlugZap, RefreshCw } from "lucide-react";
 import { apiGet } from "@/lib/api";
+import { getArabicErrorMessage } from "@/lib/error-messages";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { AdminNotification } from "@/types/admin";
 
 interface NotificationsResponse {
@@ -21,7 +23,7 @@ export default function AdminNotificationsPage() {
       setNotifications(response.notifications);
       setError("");
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load notifications");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setLoading(false);
     }
@@ -123,22 +125,22 @@ export default function AdminNotificationsPage() {
 
   const statusLabel = useMemo(() => {
     if (connectionStatus === "connected") {
-      return "Live WebSocket";
+      return "اتصال مباشر";
     }
 
     if (connectionStatus === "polling") {
-      return "Polling fallback";
+      return "وضع الاستطلاع";
     }
 
-    return "Connecting";
+    return "جارٍ الاتصال";
   }, [connectionStatus]);
 
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Admin Notifications</h1>
-          <p className="text-sm text-slate-500">Real-time stream of all user actions recorded by the audit system.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">إشعارات الإدارة</h1>
+          <p className="text-sm text-slate-500">بث مباشر لكل أنشطة المستخدمين المسجلة عبر نظام التدقيق.</p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
           <PlugZap size={14} />
@@ -153,7 +155,7 @@ export default function AdminNotificationsPage() {
           type="button"
         >
           <RefreshCw size={14} />
-          Refresh
+          تحديث
         </button>
       </div>
 
@@ -162,27 +164,29 @@ export default function AdminNotificationsPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-right text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">Actor</th>
-              <th className="px-4 py-3">Action</th>
+              <th className="px-4 py-3">الوقت</th>
+              <th className="px-4 py-3">المستخدم</th>
+              <th className="px-4 py-3">الإجراء</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {loading ? (
-              <tr>
-                <td className="px-4 py-6 text-slate-500" colSpan={3}>
-                  Loading notifications...
-                </td>
-              </tr>
+              Array.from({ length: 8 }).map((_, idx) => (
+                <tr key={idx}>
+                  <td className="px-4 py-3" colSpan={3}>
+                    <Skeleton className="h-6 w-full" />
+                  </td>
+                </tr>
+              ))
             ) : notifications.length === 0 ? (
               <tr>
                 <td className="px-4 py-6 text-slate-500" colSpan={3}>
                   <span className="inline-flex items-center gap-2">
                     <BellRing size={14} />
-                    No notifications yet.
+                    لا توجد إشعارات بعد.
                   </span>
                 </td>
               </tr>

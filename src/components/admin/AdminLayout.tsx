@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Bell, HelpCircle, LayoutDashboard, LogOut, Menu, ShieldCheck, Users } from "lucide-react";
+import { Bell, HardDrive, HelpCircle, LayoutDashboard, LogOut, Menu, ScrollText, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { roleLabel } from "@/lib/error-messages";
 
 const navItems = [
-  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/questions", label: "Questions", icon: HelpCircle },
-  { to: "/admin/notifications", label: "Notifications", icon: Bell },
+  { to: "/admin/dashboard", label: "لوحة المراقبة", icon: LayoutDashboard },
+  { to: "/admin/users", label: "المستخدمون", icon: Users },
+  { to: "/admin/questions", label: "الأسئلة", icon: HelpCircle },
+  { to: "/admin/notifications", label: "الإشعارات", icon: Bell },
+  { to: "/admin/audit", label: "سجل التدقيق", icon: ScrollText },
+  { to: "/admin/storage", label: "التخزين", icon: HardDrive },
 ];
 
 export default function AdminLayout() {
@@ -23,28 +26,26 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900" dir="ltr">
+    <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-900 px-4 py-3 text-white shadow-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/25 text-white md:hidden"
               onClick={() => setMobileOpen((value) => !value)}
-              aria-label="Toggle admin navigation"
+              aria-label="فتح/إغلاق قائمة الإدارة"
             >
               <Menu size={18} />
             </button>
-            <Link to="/admin/dashboard" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest">
+            <Link to="/admin/dashboard" className="flex items-center gap-2 text-sm font-semibold tracking-widest">
               <ShieldCheck size={16} />
-              Monitoring Console
+              لوحة الإدارة
             </Link>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <p className="text-xs uppercase tracking-wider text-cyan-200">Signed in</p>
-              <p className="text-sm font-semibold">
-                {user?.username} • {user?.role}
-              </p>
+              <p className="text-xs tracking-wider text-cyan-200">مسجل الدخول</p>
+              <p className="text-sm font-semibold">{user?.username} • {roleLabel(user?.role)}</p>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
               {initials}
@@ -54,7 +55,7 @@ export default function AdminLayout() {
               onClick={handleLogout}
             >
               <LogOut size={14} />
-              Logout
+              تسجيل الخروج
             </button>
           </div>
         </div>

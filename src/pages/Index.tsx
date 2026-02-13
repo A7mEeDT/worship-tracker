@@ -1,8 +1,11 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorshipData } from "@/hooks/use-worship-data";
 import PrayerTab from "@/components/PrayerTab";
-import { Save, AlertTriangle, Star } from "lucide-react";
+import MobileBottomNav, { type BottomNavItem } from "@/components/main/MobileBottomNav";
+import { formatDateTime } from "@/lib/format";
+import { t } from "@/i18n";
+import { AlertCircle, CheckCircle2, Save, AlertTriangle, Star } from "lucide-react";
 
 type TabId = "prayer" | "azkar" | "quran" | "zikr" | "duas" | "questions" | "report";
 
@@ -13,7 +16,7 @@ const DuaTab = lazy(() => import("@/components/DuaTab"));
 const QuestionsTab = lazy(() => import("@/components/QuestionsTab"));
 const ReportTab = lazy(() => import("@/components/ReportTab"));
 
-const tabs: { id: TabId; label: string; icon: string }[] = [
+const tabs: BottomNavItem<TabId>[] = [
   { id: "prayer", label: "الصلوات", icon: "🕌" },
   { id: "azkar", label: "الورد", icon: "📿" },
   { id: "quran", label: "القرآن", icon: "📖" },
@@ -31,8 +34,36 @@ const Index = () => {
   const locked = data.date < today;
   const points = data.calculatePoints();
 
+  const lastSavedLabel = useMemo(() => formatDateTime(data.lastSavedAt), [data.lastSavedAt]);
+
+  useEffect(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (!data.isDirty || locked) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [data.isDirty, locked]);
+
+  const handleDateChange = (nextDate: string) => {
+    if (nextDate === data.date) {
+      return;
+    }
+    if (data.isDirty && !locked) {
+      const proceed = confirm("لديك تغييرات غير محفوظة. هل تريد تبديل التاريخ بدون حفظ؟");
+      if (!proceed) {
+        return;
+      }
+    }
+    data.setDate(nextDate);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-gold/10 pb-10">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-gold/10 pb-28 sm:pb-10">
       {/* Header */}
       <header className="gradient-header pattern-bg text-primary-foreground py-8 px-4 mb-6">
         <div className="max-w-3xl mx-auto text-center">
@@ -67,7 +98,7 @@ const Index = () => {
               type="date"
               value={data.date}
               max={today}
-              onChange={e => data.setDate(e.target.value)}
+              onChange={e => handleDateChange(e.target.value)}
               className="flex-1 bg-transparent text-sm focus:outline-none"
             />
           </div>
@@ -83,8 +114,39 @@ const Index = () => {
           </div>
         </div>
 
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+          <div className="flex items-center gap-2">
+            {locked ? (
+              <>
+                <AlertTriangle size={16} className="text-accent" />
+                <span className="font-semibold">قراءة فقط</span>
+              </>
+            ) : data.isDirty ? (
+              <>
+                <AlertCircle size={16} className="text-amber-600" />
+                <span className="font-semibold">تغييرات غير محفوظة</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={16} className="text-emerald-600" />
+                <span className="font-semibold">محفوظ</span>
+              </>
+            )}
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            {data.lastSavedAt ? (
+              <>
+                آخر حفظ: <span className="font-semibold text-foreground">{lastSavedLabel}</span>
+              </>
+            ) : (
+              "لم يتم الحفظ بعد"
+            )}
+          </div>
+        </div>
+
         {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+        <div className="hidden sm:flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -104,7 +166,7 @@ const Index = () => {
         {/* Tab content */}
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">جارٍ التحميل...</div>}>
+            <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">{t("app_loading")}</div>}>
               {activeTab === "prayer" && (
                 <PrayerTab prayers={data.prayers} setPrayers={data.setPrayers} locked={locked} />
               )}
@@ -162,20 +224,28 @@ const Index = () => {
         </motion.div>
 
         {/* Save */}
-        <button
-          onClick={data.saveDay}
-          disabled={data.saving || locked}
-          className="w-full mt-4 rounded-2xl bg-success py-4 text-success-foreground font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
-        >
-          <Save size={20} />
-          {data.saving ? "⏳ جارٍ الحفظ..." : "💾 حفظ إنجاز اليوم"}
-        </button>
+        <div className="sticky bottom-24 sm:static mt-4 z-30">
+          <div className="rounded-2xl border border-border/60 bg-card/85 p-2 shadow-lg backdrop-blur sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+            <button
+              onClick={data.saveDay}
+              disabled={data.saving || locked}
+              className="w-full rounded-2xl bg-success py-4 text-success-foreground font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
+            >
+              <Save size={20} />
+              {data.saving ? "⏳ جارٍ الحفظ..." : data.isDirty ? "💾 حفظ التغييرات" : "💾 حفظ إنجاز اليوم"}
+            </button>
 
-        {data.saveStatus && (
-          <p className="text-center mt-3 text-sm text-muted-foreground">{data.saveStatus}</p>
-        )}
+            {data.saveStatus && (
+              <p aria-live="polite" className="text-center mt-3 text-sm text-muted-foreground">
+                {data.saveStatus}
+              </p>
+            )}
+          </div>
+        </div>
         </div>
       </div>
+
+      <MobileBottomNav tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
     </div>
   );
 };

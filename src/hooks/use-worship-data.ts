@@ -14,6 +14,7 @@ import {
 } from "@/lib/worship-types";
 import { logAction } from "@/lib/activity";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
+import { getArabicErrorMessage } from "@/lib/error-messages";
 import { useAuth } from "@/hooks/use-auth";
 import type { ReportRecord, ReportWindow } from "@/types/reports";
 
@@ -73,6 +74,11 @@ export function useWorshipData() {
 
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
+  const baselineSnapshotRef = useRef<string>("");
+  const initialLoadRef = useRef(false);
 
   const wirdsRef = useRef(wirds);
   const wirdCheckedRef = useRef(wirdChecked);
@@ -84,6 +90,95 @@ export function useWorshipData() {
   useEffect(() => {
     wirdCheckedRef.current = wirdChecked;
   }, [wirdChecked]);
+
+  const normalizePrayer = (value?: Partial<PrayerData> | null): PrayerData => ({
+    jamaahHome: Boolean(value?.jamaahHome),
+    jamaahMosque: Boolean((value as PrayerData | undefined)?.jamaahMosque ?? (value as PrayerData | undefined)?.jamaah),
+    qada: Boolean(value?.qada),
+    fard: Boolean(value?.fard),
+    sunnah: Boolean(value?.sunnah),
+    khatm: Boolean(value?.khatm),
+  });
+
+  const prayerHasAnyValue = (value: PrayerData) =>
+    Boolean(value.jamaahHome || value.jamaahMosque || value.qada || value.fard || value.sunnah || value.khatm);
+
+  const buildSnapshotFromState = useCallback(() => {
+    const normalizedPrayers = Object.entries(prayers)
+      .map(([name, value]) => [name, normalizePrayer(value)] as const)
+      .filter(([, value]) => prayerHasAnyValue(value))
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    const checkedWirds = wirds
+      .map((entry, index) => (wirdChecked[index] ? getWirdKey(entry) : null))
+      .filter(Boolean)
+      .sort((a, b) => String(a).localeCompare(String(b)));
+
+    const zikrPairs = zikrs
+      .map((entry, index) => {
+        const count = Math.trunc(Number(zikrTotals[index] ?? 0));
+        return count > 0 ? [entry.name, count] : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => String(a?.[0]).localeCompare(String(b?.[0])));
+
+    return JSON.stringify({
+      childName: childName.trim(),
+      prayers: normalizedPrayers,
+      wirds: checkedWirds,
+      quran: Math.trunc(Number(quranValue) || 0),
+      zikrs: zikrPairs,
+    });
+  }, [childName, prayers, quranValue, wirdChecked, wirds, zikrs, zikrTotals]);
+
+  const buildSnapshotFromDayData = useCallback((dayData: DayData | null) => {
+    if (!dayData) {
+      return JSON.stringify({
+        childName: childName.trim(),
+        prayers: [],
+        wirds: [],
+        quran: 0,
+        zikrs: [],
+      });
+    }
+
+    const normalizedPrayers = Object.entries(dayData.prayers ?? {})
+      .map(([name, value]) => [name, normalizePrayer(value)] as const)
+      .filter(([, value]) => prayerHasAnyValue(value))
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    const checkedWirds = [
+      ...(dayData.wirds?.daily ?? []).filter((entry) => entry.checked).map((entry) => `daily:${entry.name}`),
+      ...(dayData.wirds?.weekly ?? []).filter((entry) => entry.checked).map((entry) => `weekly:${entry.name}`),
+    ].sort((a, b) => a.localeCompare(b));
+
+    const zikrPairs = (dayData.zikrs ?? [])
+      .map((entry) => {
+        const count = Math.trunc(Number(entry?.count ?? 0));
+        return count > 0 ? [String(entry?.name ?? ""), count] : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => String(a?.[0]).localeCompare(String(b?.[0])));
+
+    return JSON.stringify({
+      childName: String(dayData.childName ?? "").trim(),
+      prayers: normalizedPrayers,
+      wirds: checkedWirds,
+      quran: Math.trunc(Number(dayData.quran) || 0),
+      zikrs: zikrPairs,
+    });
+  }, [childName]);
+
+  useEffect(() => {
+    const snapshot = buildSnapshotFromState();
+    if (!baselineSnapshotRef.current) {
+      baselineSnapshotRef.current = snapshot;
+      setIsDirty(false);
+      return;
+    }
+
+    setIsDirty(snapshot !== baselineSnapshotRef.current);
+  }, [buildSnapshotFromState, date]);
 
   const applyWirdConfig = useCallback((nextWirds: Wird[]) => {
     const checkedByKey = new Map<string, boolean>();
@@ -109,7 +204,7 @@ export function useWorshipData() {
       const response = await apiGet<WirdConfigResponse>("/api/wird-config");
       applyWirdConfig(response.wirds);
     } catch (error) {
-      setWirdConfigError(error instanceof Error ? error.message : "Failed to load wird configuration.");
+      setWirdConfigError(getArabicErrorMessage(error));
     } finally {
       setWirdConfigLoading(false);
     }
@@ -144,7 +239,7 @@ export function useWorshipData() {
         applyWirdConfig(response.wirds);
         logAction(auditAction);
       } catch (error) {
-        setWirdConfigError(error instanceof Error ? error.message : "Failed to update wird configuration.");
+        setWirdConfigError(getArabicErrorMessage(error));
         throw error;
       } finally {
         setWirdConfigSaving(false);
@@ -268,6 +363,11 @@ export function useWorshipData() {
       const db = getLS<Record<string, DayData>>(STORAGE_KEY, {});
       const dayData = db[day];
 
+      baselineSnapshotRef.current = buildSnapshotFromDayData(dayData ?? null);
+      setIsDirty(false);
+      setLastSavedAt(dayData?.savedAt ?? null);
+      setSaveStatus("");
+
       if (!dayData) {
         setPrayers({});
         setWirdChecked({});
@@ -277,21 +377,19 @@ export function useWorshipData() {
       }
 
       if (dayData.childName) setChildName(dayData.childName);
-      if (dayData.prayers) {
-        const normalized: Record<string, PrayerData> = {};
-        Object.entries(dayData.prayers).forEach(([name, state]) => {
-          normalized[name] = {
-            jamaahHome: Boolean((state as PrayerData | undefined)?.jamaahHome),
-            jamaahMosque: Boolean((state as PrayerData | undefined)?.jamaahMosque ?? (state as PrayerData | undefined)?.jamaah),
-            qada: Boolean((state as PrayerData | undefined)?.qada),
-            fard: Boolean((state as PrayerData | undefined)?.fard),
-            sunnah: Boolean((state as PrayerData | undefined)?.sunnah),
-            khatm: Boolean((state as PrayerData | undefined)?.khatm),
-          };
-        });
-        setPrayers(normalized);
-      }
-      if (dayData.quran) setQuranValue(dayData.quran);
+      const normalized: Record<string, PrayerData> = {};
+      Object.entries(dayData.prayers ?? {}).forEach(([name, state]) => {
+        normalized[name] = {
+          jamaahHome: Boolean((state as PrayerData | undefined)?.jamaahHome),
+          jamaahMosque: Boolean((state as PrayerData | undefined)?.jamaahMosque ?? (state as PrayerData | undefined)?.jamaah),
+          qada: Boolean((state as PrayerData | undefined)?.qada),
+          fard: Boolean((state as PrayerData | undefined)?.fard),
+          sunnah: Boolean((state as PrayerData | undefined)?.sunnah),
+          khatm: Boolean((state as PrayerData | undefined)?.khatm),
+        };
+      });
+      setPrayers(normalized);
+      setQuranValue(dayData.quran ?? 0);
 
       const newWirdChecked: Record<number, boolean> = {};
       wirds.forEach((w, i) => {
@@ -301,21 +399,28 @@ export function useWorshipData() {
       });
       setWirdChecked(newWirdChecked);
 
-      if (dayData.zikrs) {
-        const totals: Record<number, number> = {};
-        zikrs.forEach((z, i) => {
-          const saved = dayData.zikrs.find((s) => s.name === z.name);
-          if (saved) totals[i] = saved.count;
-        });
-        setZikrTotals(totals);
-      }
+      const totals: Record<number, number> = {};
+      zikrs.forEach((z, i) => {
+        const saved = (dayData.zikrs ?? []).find((s) => s.name === z.name);
+        if (saved) totals[i] = saved.count;
+      });
+      setZikrTotals(totals);
     },
-    [wirds, zikrs],
+    [wirds, zikrs, buildSnapshotFromDayData],
   );
+
+  useEffect(() => {
+    if (initialLoadRef.current) {
+      return;
+    }
+
+    initialLoadRef.current = true;
+    loadDay(date);
+  }, [date, loadDay]);
 
   const saveDay = useCallback(async () => {
     if (!childName.trim()) {
-      setSaveStatus("Please enter a name first.");
+      setSaveStatus("الرجاء إدخال الاسم أولاً.");
       return;
     }
 
@@ -371,16 +476,20 @@ export function useWorshipData() {
     }
 
     if (backendSaved && externalPosted) {
-      setSaveStatus("Report saved successfully.");
+      setSaveStatus("تم حفظ التقرير بنجاح.");
     } else if (backendSaved && !externalPosted) {
-      setSaveStatus("Saved to system, but external sync failed.");
+      setSaveStatus("تم الحفظ في النظام، لكن فشلت المزامنة الخارجية.");
     } else {
-      setSaveStatus("Saved locally, but failed to save to server.");
+      setSaveStatus("تم الحفظ محليًا، لكن فشل الحفظ على الخادم.");
       logAction(`report_save_failed_backend:${date}`);
     }
 
+    baselineSnapshotRef.current = buildSnapshotFromState();
+    setIsDirty(false);
+    setLastSavedAt(dayData.savedAt);
+
     setSaving(false);
-  }, [date, childName, prayers, wirds, wirdChecked, quranValue, zikrs, zikrTotals, duas, calculatePoints]);
+  }, [date, childName, prayers, wirds, wirdChecked, quranValue, zikrs, zikrTotals, duas, calculatePoints, buildSnapshotFromState]);
 
   const getReports = useCallback(
     async (window: ReportWindow = "all", usernameFilter?: string) => {
@@ -412,7 +521,7 @@ export function useWorshipData() {
       });
 
       if (!response.ok) {
-        throw new Error(`Export failed with ${response.status}`);
+        throw new Error(`فشل التصدير: ${response.status}`);
       }
 
       const blob = await response.blob();
@@ -466,6 +575,8 @@ export function useWorshipData() {
     saveDay,
     saving,
     saveStatus,
+    isDirty,
+    lastSavedAt,
     getReports,
     exportReports,
     clearAllData,

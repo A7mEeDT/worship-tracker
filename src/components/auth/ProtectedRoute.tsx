@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import type { UserRole } from "@/types/auth";
+import { t } from "@/i18n";
 
 interface ProtectedRouteProps {
   allowedRoles: UserRole[];
@@ -13,8 +14,8 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700" dir="ltr">
-        <div className="animate-pulse text-sm font-semibold tracking-wide uppercase">Loading session...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700">
+        <div className="animate-pulse text-sm font-semibold tracking-wide">{t("session_loading")}</div>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, Download, Lock, Plus, Save, Timer, Trash2, Unlock } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
+import { getArabicErrorMessage } from "@/lib/error-messages";
 import type { AdminQuestion, AdminQuestionGroup, QuestionOption, QuestionType, SubmissionSummary } from "@/types/questions";
 
 interface GroupsResponse {
@@ -59,7 +60,7 @@ export default function AdminQuestionsPage() {
   useEffect(() => {
     setLoading(true);
     void loadGroups()
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load groups."))
+      .catch((err) => setError(getArabicErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [loadGroups]);
 
@@ -110,7 +111,7 @@ export default function AdminQuestionsPage() {
 
       await loadGroups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save group.");
+      setError(getArabicErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -179,7 +180,7 @@ export default function AdminQuestionsPage() {
       credentials: "include",
     });
     if (!response.ok) {
-      throw new Error(`Export failed with ${response.status}`);
+      throw new Error(`فشل التصدير: ${response.status}`);
     }
     const blob = await response.blob();
     const downloadUrl = URL.createObjectURL(blob);

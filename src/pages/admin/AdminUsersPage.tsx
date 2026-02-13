@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ShieldCheck, UserCog, UserPlus, UserRoundX } from "lucide-react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
+import { getArabicErrorMessage, roleLabel } from "@/lib/error-messages";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ManagedUser } from "@/types/admin";
 import type { UserRole } from "@/types/auth";
 
@@ -36,7 +38,7 @@ export default function AdminUsersPage() {
       const response = await apiGet<UsersResponse>("/api/admin/users");
       setUsers(response.users);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load users");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setLoading(false);
     }
@@ -55,12 +57,12 @@ export default function AdminUsersPage() {
     event.preventDefault();
 
     if (!isPrimaryAdmin) {
-      setError("Only primary admin can create users.");
+      setError("فقط المدير الرئيسي يمكنه إنشاء المستخدمين.");
       return;
     }
 
     if (!canCreateRole(newRole)) {
-      setError("Invalid role selection.");
+      setError("اختيار الصلاحية غير صحيح.");
       return;
     }
 
@@ -78,7 +80,7 @@ export default function AdminUsersPage() {
       setNewRole("user");
       await loadUsers();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to create user");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setBusy(false);
     }
@@ -97,7 +99,7 @@ export default function AdminUsersPage() {
       });
       await loadUsers();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to update user status");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setBusy(false);
     }
@@ -110,7 +112,7 @@ export default function AdminUsersPage() {
 
     const password = passwordDrafts[targetUsername];
     if (!password) {
-      setError("Enter a new password before saving.");
+      setError("اكتب كلمة مرور جديدة قبل الحفظ.");
       return;
     }
 
@@ -130,7 +132,7 @@ export default function AdminUsersPage() {
 
       await loadUsers();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to update password");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setBusy(false);
     }
@@ -141,7 +143,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    if (!confirm(`Delete user "${target.username}"? This cannot be undone.`)) {
+    if (!confirm(`حذف المستخدم "${target.username}"؟ لا يمكن التراجع عن هذا الإجراء.`)) {
       return;
     }
 
@@ -152,7 +154,7 @@ export default function AdminUsersPage() {
       await apiDelete(`/api/admin/users/${encodeURIComponent(target.username)}`);
       await loadUsers();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to delete user");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setBusy(false);
     }
@@ -170,7 +172,7 @@ export default function AdminUsersPage() {
       await apiPost(`/api/admin/users/${encodeURIComponent(target.username)}/promote`);
       await loadUsers();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to promote user");
+      setError(getArabicErrorMessage(requestError));
     } finally {
       setBusy(false);
     }
@@ -180,14 +182,14 @@ export default function AdminUsersPage() {
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">User Management</h1>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">إدارة المستخدمين</h1>
           <p className="text-sm text-slate-500">
-            Primary admin manages user lifecycle and promotions. Admins can view user states.
+            المدير الرئيسي يدير إنشاء/تعديل/حذف المستخدمين وترقيتهم. المشرفون يمكنهم العرض فقط.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
           <ShieldCheck size={14} />
-          {isPrimaryAdmin ? "Primary Admin Mode" : "Admin Read-Only"}
+          {isPrimaryAdmin ? "مدير رئيسي" : "عرض فقط"}
         </div>
       </div>
 
@@ -198,12 +200,12 @@ export default function AdminUsersPage() {
       <form className="rounded-2xl border border-slate-200 bg-slate-50 p-4" onSubmit={handleCreateUser}>
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
           <UserPlus size={16} />
-          Create User
+          إنشاء مستخدم
         </div>
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
           <input
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-cyan-600/50 focus:ring-2"
-            placeholder="username"
+            placeholder="اسم المستخدم"
             value={newUsername}
             onChange={(event) => setNewUsername(event.target.value)}
             disabled={!isPrimaryAdmin || busy}
@@ -212,7 +214,7 @@ export default function AdminUsersPage() {
           <input
             type="password"
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-cyan-600/50 focus:ring-2"
-            placeholder="strong password"
+            placeholder="كلمة مرور قوية"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
             disabled={!isPrimaryAdmin || busy}
@@ -226,7 +228,7 @@ export default function AdminUsersPage() {
           >
             {CREATION_ROLES.filter((role) => canCreateRole(role)).map((role) => (
               <option key={role} value={role}>
-                {role}
+                {roleLabel(role)}
               </option>
             ))}
           </select>
@@ -235,33 +237,35 @@ export default function AdminUsersPage() {
             disabled={!isPrimaryAdmin || busy}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "Saving..." : "Create"}
+            {busy ? "جارٍ الحفظ..." : "إنشاء"}
           </button>
         </div>
       </form>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-right text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="px-4 py-3">Username</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Reset Password</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3">اسم المستخدم</th>
+              <th className="px-4 py-3">الصلاحية</th>
+              <th className="px-4 py-3">الحالة</th>
+              <th className="px-4 py-3">تغيير كلمة المرور</th>
+              <th className="px-4 py-3">إجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {loading ? (
-              <tr>
-                <td className="px-4 py-6 text-slate-500" colSpan={5}>
-                  Loading users...
-                </td>
-              </tr>
+              Array.from({ length: 6 }).map((_, idx) => (
+                <tr key={idx}>
+                  <td className="px-4 py-3" colSpan={5}>
+                    <Skeleton className="h-6 w-full" />
+                  </td>
+                </tr>
+              ))
             ) : sortedUsers.length === 0 ? (
               <tr>
                 <td className="px-4 py-6 text-slate-500" colSpan={5}>
-                  No users found.
+                  لا يوجد مستخدمون.
                 </td>
               </tr>
             ) : (
@@ -273,7 +277,7 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 font-semibold text-slate-800">{managedUser.username}</td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
-                        {managedUser.role}
+                        {roleLabel(managedUser.role)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -284,7 +288,7 @@ export default function AdminUsersPage() {
                             : "bg-amber-100 text-amber-700"
                         }`}
                       >
-                        {managedUser.isActive ? "active" : "deactivated"}
+                        {managedUser.isActive ? "نشط" : "موقوف"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -293,7 +297,7 @@ export default function AdminUsersPage() {
                           <input
                             type="password"
                             className="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none ring-cyan-600/50 focus:ring-2"
-                            placeholder="new password"
+                            placeholder="كلمة مرور جديدة"
                             value={passwordDrafts[managedUser.username] ?? ""}
                             onChange={(event) =>
                               setPasswordDrafts((prev) => ({
@@ -308,11 +312,11 @@ export default function AdminUsersPage() {
                             disabled={busy}
                             type="button"
                           >
-                            Save
+                            حفظ
                           </button>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400">Not available</span>
+                        <span className="text-xs text-slate-400">غير متاح</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -326,7 +330,7 @@ export default function AdminUsersPage() {
                               disabled={busy}
                             >
                               <UserCog size={12} />
-                              Promote
+                              ترقية لمشرف
                             </button>
                           )}
                           <button
@@ -335,7 +339,7 @@ export default function AdminUsersPage() {
                             type="button"
                             disabled={busy}
                           >
-                            {managedUser.isActive ? "Deactivate" : "Activate"}
+                            {managedUser.isActive ? "إيقاف" : "تفعيل"}
                           </button>
                           <button
                             className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
@@ -344,12 +348,12 @@ export default function AdminUsersPage() {
                             disabled={busy}
                           >
                             <UserRoundX size={12} />
-                            Delete
+                            حذف
                           </button>
                         </div>
                       ) : (
                         <span className="text-xs text-slate-400">
-                          {isProtected ? "Protected account" : "Read-only"}
+                          {isProtected ? "حساب محمي" : "عرض فقط"}
                         </span>
                       )}
                     </td>
