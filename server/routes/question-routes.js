@@ -34,6 +34,7 @@ export function createQuestionRouter({
       res.json({
         serverTime: new Date().toISOString(),
         group: response.group,
+        alreadySubmitted: Boolean(response.alreadySubmitted),
       });
     } catch (error) {
       next(error);
@@ -41,12 +42,15 @@ export function createQuestionRouter({
   });
 
   router.post("/:groupId/submit", async (req, res, next) => {
-    try {
-      const groupId = String(req.params.groupId ?? "").trim();
-      if (!groupId) {
-        throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
-      }
+    const groupId = String(req.params.groupId ?? "").trim();
+    const ipAddress = getRequestIpAddress(req);
 
+    if (!groupId) {
+      next(new AppError(400, "Group ID is required.", "MISSING_GROUP_ID"));
+      return;
+    }
+
+    try {
       const answersById = sanitizeAnswersPayload(req.body?.answers);
       const submission = await questionService.submitAnswers({
         groupId,
@@ -57,7 +61,7 @@ export function createQuestionRouter({
       await auditService.recordUserAction({
         username: req.user.username,
         action: `questions_submit:${groupId}:score_${submission.score}_${submission.maxScore}`,
-        ipAddress: getRequestIpAddress(req),
+        ipAddress,
       });
 
       res.status(201).json({
@@ -72,10 +76,22 @@ export function createQuestionRouter({
         },
       });
     } catch (error) {
+      // Anti-cheat auditing: log rejected attempts (duplicate submit or submit after close/timeout).
+      if (error instanceof AppError && ["GROUP_CLOSED", "ALREADY_SUBMITTED"].includes(error.code)) {
+        try {
+          await auditService.recordUserAction({
+            username: req.user.username,
+            action: `questions_submit_rejected:${groupId}:${error.code.toLowerCase()}`,
+            ipAddress,
+          });
+        } catch {
+          // Avoid masking the original error.
+        }
+      }
+
       next(error);
     }
   });
 
   return router;
 }
-

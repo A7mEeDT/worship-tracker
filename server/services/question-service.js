@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
 import { FILE_NAMES } from "../constants.js";
@@ -6,8 +7,11 @@ import { AppError } from "../utils/errors.js";
 import { appendLine, ensureFile, enqueueWrite, readLines, writeLinesAtomic } from "../utils/file-store.js";
 
 const groupsPath = path.join(config.dataDir, FILE_NAMES.QUESTION_GROUPS);
+const groupsArchivePath = path.join(config.dataDir, FILE_NAMES.QUESTION_GROUPS_ARCHIVE);
 const sessionsPath = path.join(config.dataDir, FILE_NAMES.QUESTION_SESSIONS);
+const sessionsArchivePath = path.join(config.dataDir, FILE_NAMES.QUESTION_SESSIONS_ARCHIVE);
 const submissionsPath = path.join(config.dataDir, FILE_NAMES.QUESTION_SUBMISSIONS);
+const submissionsArchivePath = path.join(config.dataDir, FILE_NAMES.QUESTION_SUBMISSIONS_ARCHIVE);
 
 const GROUP_STATUSES = new Set(["draft", "open", "locked", "closed"]);
 const QUESTION_TYPES = new Set(["text", "multiple_choice"]);
@@ -157,6 +161,52 @@ async function readAllGroups() {
 
 async function writeAllGroups(groups) {
   await writeLinesAtomic(groupsPath, groups.map((g) => JSON.stringify(g)));
+}
+
+async function appendLines(filePath, lines) {
+  if (!lines.length) {
+    return;
+  }
+
+  await ensureFile(filePath);
+  const payload = `${lines.join("\n")}\n`;
+  await fs.appendFile(filePath, payload, "utf8");
+}
+
+function parseGroupId(rawValue) {
+  return sanitizeText(rawValue, 80);
+}
+
+async function moveLinesByGroupId({ sourcePath, destinationPath, groupId, annotateKey }) {
+  const targetId = parseGroupId(groupId);
+  if (!targetId) {
+    return { moved: 0, kept: 0 };
+  }
+
+  const now = new Date().toISOString();
+  const sourceLines = await readLines(sourcePath);
+  const keep = [];
+  const moved = [];
+
+  for (const line of sourceLines) {
+    const parsed = parseJsonLine(line);
+    const entryGroupId = sanitizeText(parsed?.groupId, 80);
+
+    if (parsed && typeof parsed === "object" && entryGroupId === targetId) {
+      const record = annotateKey ? { ...parsed, [annotateKey]: now } : parsed;
+      moved.push(JSON.stringify(record));
+    } else {
+      keep.push(line);
+    }
+  }
+
+  await writeLinesAtomic(sourcePath, keep);
+
+  if (destinationPath && moved.length) {
+    await appendLines(destinationPath, moved);
+  }
+
+  return { moved: moved.length, kept: keep.length };
 }
 
 async function readAllSessions() {
@@ -339,14 +389,165 @@ function computeScore({ group, answersById }) {
 
 export async function initializeQuestionStore() {
   await ensureFile(groupsPath);
+  await ensureFile(groupsArchivePath);
   await ensureFile(sessionsPath);
+  await ensureFile(sessionsArchivePath);
   await ensureFile(submissionsPath);
+  await ensureFile(submissionsArchivePath);
 }
 
 export async function listGroupsForAdmin() {
+  const now = new Date();
   const groups = await readAllGroups();
-  groups.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return groups;
+
+  // Keep admin view consistent: close expired open groups to avoid "stuck open" states.
+  const hasExpiredOpen = groups.some((g) => groupIsExpired(g, now));
+  if (hasExpiredOpen) {
+    await enqueueWrite(async () => {
+      const current = await readAllGroups();
+      const next = current.map((g) =>
+        groupIsExpired(g, now) ? { ...g, status: "closed", updatedAt: new Date().toISOString() } : g,
+      );
+      await writeAllGroups(next);
+    });
+  }
+
+  const refreshed = hasExpiredOpen ? await readAllGroups() : groups;
+  refreshed.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return refreshed;
+}
+
+export async function clearGroupResults({ groupId }) {
+  const targetId = parseGroupId(groupId);
+  if (!targetId) {
+    throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
+  }
+
+  let removed = { sessions: 0, submissions: 0 };
+
+  await enqueueWrite(async () => {
+    const groups = await readAllGroups();
+    const group = groups.find((g) => g.id === targetId);
+    if (!group) {
+      throw new AppError(404, "Question group not found.", "GROUP_NOT_FOUND");
+    }
+
+    const now = new Date();
+    if (group.status === "open" && !groupIsExpired(group, now)) {
+      throw new AppError(409, "Cannot clear results while the group is open.", "GROUP_OPEN");
+    }
+
+    const sessionsMove = await moveLinesByGroupId({
+      sourcePath: sessionsPath,
+      destinationPath: null,
+      groupId: targetId,
+    });
+
+    const submissionsMove = await moveLinesByGroupId({
+      sourcePath: submissionsPath,
+      destinationPath: null,
+      groupId: targetId,
+    });
+
+    removed = { sessions: sessionsMove.moved, submissions: submissionsMove.moved };
+  });
+
+  return removed;
+}
+
+export async function archiveGroup({ groupId }) {
+  const targetId = parseGroupId(groupId);
+  if (!targetId) {
+    throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
+  }
+
+  const now = new Date();
+  const archivedAt = now.toISOString();
+
+  let moved = { sessions: 0, submissions: 0 };
+
+  await enqueueWrite(async () => {
+    const groups = await readAllGroups();
+    const index = groups.findIndex((g) => g.id === targetId);
+    if (index < 0) {
+      throw new AppError(404, "Question group not found.", "GROUP_NOT_FOUND");
+    }
+
+    const group = groups[index];
+    const expired = groupIsExpired(group, now);
+    if (group.status === "open" && !expired) {
+      throw new AppError(409, "Cannot archive a group while it is open.", "GROUP_OPEN");
+    }
+
+    const record = expired
+      ? { ...group, status: "closed", updatedAt: archivedAt, archivedAt }
+      : { ...group, archivedAt };
+
+    const nextGroups = groups.filter((g) => g.id !== targetId);
+    await writeAllGroups(nextGroups);
+    await appendLines(groupsArchivePath, [JSON.stringify(record)]);
+
+    const sessionsMove = await moveLinesByGroupId({
+      sourcePath: sessionsPath,
+      destinationPath: sessionsArchivePath,
+      groupId: targetId,
+      annotateKey: "archivedAt",
+    });
+
+    const submissionsMove = await moveLinesByGroupId({
+      sourcePath: submissionsPath,
+      destinationPath: submissionsArchivePath,
+      groupId: targetId,
+      annotateKey: "archivedAt",
+    });
+
+    moved = { sessions: sessionsMove.moved, submissions: submissionsMove.moved };
+  });
+
+  return { groupId: targetId, ...moved };
+}
+
+export async function deleteGroup({ groupId }) {
+  const targetId = parseGroupId(groupId);
+  if (!targetId) {
+    throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
+  }
+
+  const now = new Date();
+
+  let removed = { sessions: 0, submissions: 0 };
+
+  await enqueueWrite(async () => {
+    const groups = await readAllGroups();
+    const index = groups.findIndex((g) => g.id === targetId);
+    if (index < 0) {
+      throw new AppError(404, "Question group not found.", "GROUP_NOT_FOUND");
+    }
+
+    const group = groups[index];
+    if (group.status === "open" && !groupIsExpired(group, now)) {
+      throw new AppError(409, "Cannot delete a group while it is open.", "GROUP_OPEN");
+    }
+
+    const nextGroups = groups.filter((g) => g.id !== targetId);
+    await writeAllGroups(nextGroups);
+
+    const sessionsMove = await moveLinesByGroupId({
+      sourcePath: sessionsPath,
+      destinationPath: null,
+      groupId: targetId,
+    });
+
+    const submissionsMove = await moveLinesByGroupId({
+      sourcePath: submissionsPath,
+      destinationPath: null,
+      groupId: targetId,
+    });
+
+    removed = { sessions: sessionsMove.moved, submissions: submissionsMove.moved };
+  });
+
+  return { groupId: targetId, ...removed };
 }
 
 export async function listGroupsForUser() {
@@ -394,14 +595,19 @@ export async function getActiveGroupForUser({ username }) {
     null;
 
   if (!candidate) {
-    return { group: null };
+    return { group: null, alreadySubmitted: false };
   }
+
+  const cleanedUsername = sanitizeText(username, 80).toLowerCase();
+  const alreadySubmitted = cleanedUsername
+    ? await hasUserSubmitted({ groupId: candidate.id, username: cleanedUsername })
+    : false;
 
   if (candidate.status === "open" && !groupIsExpired(candidate, now)) {
     await ensureUserSession({ groupId: candidate.id, username, now });
   }
 
-  return { group: toUserGroupView(candidate, now) };
+  return { group: toUserGroupView(candidate, now), alreadySubmitted };
 }
 
 async function ensureUserSession({ groupId, username, now = new Date() }) {
@@ -419,6 +625,31 @@ async function ensureUserSession({ groupId, username, now = new Date() }) {
   const startedAt = now.toISOString();
   await appendLine(sessionsPath, JSON.stringify({ groupId, username: cleanedUsername, startedAt }));
   return startedAt;
+}
+
+async function hasUserSubmitted({ groupId, username }) {
+  const targetGroupId = parseGroupId(groupId);
+  const cleanedUsername = sanitizeText(username, 80).toLowerCase();
+
+  if (!targetGroupId || !cleanedUsername) {
+    return false;
+  }
+
+  const lines = await readLines(submissionsPath);
+  for (const line of lines) {
+    const parsed = parseJsonLine(line);
+    if (!parsed || typeof parsed !== "object") {
+      continue;
+    }
+
+    const entryGroupId = sanitizeText(parsed.groupId, 80);
+    const entryUsername = sanitizeText(parsed.username, 80).toLowerCase();
+    if (entryGroupId === targetGroupId && entryUsername === cleanedUsername) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export async function createGroup({ title, durationSeconds, questions }) {

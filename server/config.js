@@ -7,6 +7,20 @@ function parseNumber(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBoolean(value, fallback) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "n", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: parseNumber(process.env.API_PORT ?? process.env.PORT, 3001),
@@ -19,6 +33,12 @@ export const config = {
   bcryptRounds: parseNumber(process.env.BCRYPT_ROUNDS, 12),
   primaryAdminUsername: (process.env.PRIMARY_ADMIN_USERNAME ?? "primary-admin").toLowerCase(),
   primaryAdminPassword: process.env.PRIMARY_ADMIN_PASSWORD ?? "ChangeMe!2026",
+  backupEnabled: parseBoolean(process.env.BACKUP_ENABLED, (process.env.NODE_ENV ?? "development") === "production"),
+  backupIntervalMs: parseNumber(
+    process.env.BACKUP_INTERVAL_MS,
+    parseNumber(process.env.BACKUP_INTERVAL_HOURS, 24) * 60 * 60 * 1000,
+  ),
+  backupRetentionDays: parseNumber(process.env.BACKUP_RETENTION_DAYS, 14),
 };
 
 if (config.nodeEnv === "production" && config.jwtSecret === DEFAULT_JWT_SECRET) {

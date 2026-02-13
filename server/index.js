@@ -17,6 +17,7 @@ import { getRequestIpAddress, initializeActivityLog } from "./services/activity-
 import * as authService from "./services/auth-service.js";
 import * as credentialsService from "./services/credential-service.js";
 import { createNotificationService } from "./services/notification-service.js";
+import { startBackupScheduler } from "./services/backup-service.js";
 import * as questionService from "./services/question-service.js";
 import * as reportService from "./services/report-service.js";
 import * as wirdConfigService from "./services/wird-config-service.js";
@@ -41,6 +42,13 @@ await notificationService.attachWebSocketServer(server);
 const auditService = createAuditService({ notificationService });
 const authMiddleware = createAuthMiddleware({
   authenticateFromRequest: authService.authenticateFromRequest,
+});
+
+startBackupScheduler({
+  enabled: config.backupEnabled,
+  dataDir: config.dataDir,
+  intervalMs: config.backupIntervalMs,
+  retentionDays: config.backupRetentionDays,
 });
 
 app.disable("x-powered-by");

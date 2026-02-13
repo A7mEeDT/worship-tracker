@@ -1,15 +1,34 @@
 interface ApiErrorPayload {
   error?: {
+    code?: string;
     message?: string;
   };
 }
 
-async function parseErrorMessage(response: Response) {
+export class ApiError extends Error {
+  code?: string;
+  status?: number;
+
+  constructor(message: string, { code, status }: { code?: string; status?: number } = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
+async function parseErrorPayload(response: Response) {
   try {
     const payload = (await response.json()) as ApiErrorPayload;
-    return payload?.error?.message || `Request failed with ${response.status}`;
+    return {
+      message: payload?.error?.message || `Request failed with ${response.status}`,
+      code: payload?.error?.code,
+    };
   } catch {
-    return `Request failed with ${response.status}`;
+    return {
+      message: `Request failed with ${response.status}`,
+      code: undefined,
+    };
   }
 }
 
@@ -24,7 +43,8 @@ export async function apiRequest<T>(url: string, init?: RequestInit): Promise<T>
   });
 
   if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
+    const payload = await parseErrorPayload(response);
+    throw new ApiError(payload.message, { code: payload.code, status: response.status });
   }
 
   if (response.status === 204) {

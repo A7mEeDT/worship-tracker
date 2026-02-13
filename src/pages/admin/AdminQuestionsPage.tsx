@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Lock, Plus, Save, Timer, Unlock } from "lucide-react";
-import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { Archive, Download, Lock, Plus, Save, Timer, Trash2, Unlock } from "lucide-react";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import type { AdminQuestion, AdminQuestionGroup, QuestionOption, QuestionType, SubmissionSummary } from "@/types/questions";
 
 interface GroupsResponse {
@@ -132,6 +132,46 @@ export default function AdminQuestionsPage() {
     await loadGroups();
   };
 
+  const clearResults = async (groupId: string) => {
+    if (!confirm("سيتم حذف نتائج هذه المجموعة (الإجابات) مع إبقاء المجموعة نفسها. هل تريد المتابعة؟")) {
+      return;
+    }
+    await apiDelete(`/api/admin/questions/groups/${encodeURIComponent(groupId)}/submissions`);
+    await loadSubmissions(resultsGroupId === groupId ? groupId : resultsGroupId);
+  };
+
+  const archiveGroup = async (groupId: string) => {
+    if (!confirm("سيتم أرشفة المجموعة ونتائجها لإزالة البيانات من الملفات النشطة (لتقليل الحجم). هل تريد المتابعة؟")) {
+      return;
+    }
+    await apiPost(`/api/admin/questions/groups/${encodeURIComponent(groupId)}/archive`);
+    if (editingGroupId === groupId) {
+      beginCreate();
+    }
+    if (resultsGroupId === groupId) {
+      setResultsGroupId("");
+      setSubmissions([]);
+      setExpandedSubmissionId("");
+    }
+    await loadGroups();
+  };
+
+  const deleteGroup = async (groupId: string) => {
+    if (!confirm("تحذير: سيتم حذف المجموعة ونتائجها نهائيًا من الملفات النشطة. هل أنت متأكد؟")) {
+      return;
+    }
+    await apiDelete(`/api/admin/questions/groups/${encodeURIComponent(groupId)}`);
+    if (editingGroupId === groupId) {
+      beginCreate();
+    }
+    if (resultsGroupId === groupId) {
+      setResultsGroupId("");
+      setSubmissions([]);
+      setExpandedSubmissionId("");
+    }
+    await loadGroups();
+  };
+
   const exportCsv = async (groupId: string) => {
     setError("");
     const response = await fetch(`/api/admin/questions/groups/${encodeURIComponent(groupId)}/submissions/export.csv`, {
@@ -260,6 +300,29 @@ export default function AdminQuestionsPage() {
                       >
                         <Lock size={14} />
                         قفل
+                      </button>
+                      <button
+                        onClick={() => void clearResults(g.id)}
+                        disabled={g.status === "open"}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        حذف النتائج
+                      </button>
+                      <button
+                        onClick={() => void archiveGroup(g.id)}
+                        disabled={g.status === "open"}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        <Archive size={14} />
+                        أرشفة
+                      </button>
+                      <button
+                        onClick={() => void deleteGroup(g.id)}
+                        disabled={g.status === "open"}
+                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                      >
+                        <Trash2 size={14} />
+                        حذف
                       </button>
                       <button
                         onClick={() => void exportCsv(g.id)}

@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorshipData } from "@/hooks/use-worship-data";
 import PrayerTab from "@/components/PrayerTab";
-import WirdTab from "@/components/WirdTab";
-import QuranTab from "@/components/QuranTab";
-import ZikrTab from "@/components/ZikrTab";
-import DuaTab from "@/components/DuaTab";
-import ReportTab from "@/components/ReportTab";
-import QuestionsTab from "@/components/QuestionsTab";
 import { Save, AlertTriangle, Star } from "lucide-react";
 
 type TabId = "prayer" | "azkar" | "quran" | "zikr" | "duas" | "questions" | "report";
+
+const WirdTab = lazy(() => import("@/components/WirdTab"));
+const QuranTab = lazy(() => import("@/components/QuranTab"));
+const ZikrTab = lazy(() => import("@/components/ZikrTab"));
+const DuaTab = lazy(() => import("@/components/DuaTab"));
+const QuestionsTab = lazy(() => import("@/components/QuestionsTab"));
+const ReportTab = lazy(() => import("@/components/ReportTab"));
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: "prayer", label: "الصلوات", icon: "🕌" },
@@ -103,45 +104,47 @@ const Index = () => {
         {/* Tab content */}
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            {activeTab === "prayer" && (
-              <PrayerTab prayers={data.prayers} setPrayers={data.setPrayers} locked={locked} />
-            )}
-            {activeTab === "azkar" && (
-              <WirdTab
-                wirds={data.wirds} wirdChecked={data.wirdChecked}
-                setWirdChecked={data.setWirdChecked} addWird={data.addWird}
-                deleteWird={data.deleteWird} updateWird={data.updateWird}
-                canManageWirdConfig={data.canManageWirdConfig}
-                wirdConfigLoading={data.wirdConfigLoading}
-                wirdConfigSaving={data.wirdConfigSaving}
-                wirdConfigError={data.wirdConfigError}
-                refreshWirdConfig={data.refreshWirdConfig}
-                locked={locked}
-              />
-            )}
-            {activeTab === "quran" && (
-              <QuranTab quranValue={data.quranValue} setQuranValue={data.setQuranValue} locked={locked} />
-            )}
-            {activeTab === "zikr" && (
-              <ZikrTab
-                zikrs={data.zikrs} zikrTotals={data.zikrTotals}
-                setZikrTotals={data.setZikrTotals} addZikr={data.addZikr}
-                deleteZikr={data.deleteZikr} locked={locked}
-              />
-            )}
-            {activeTab === "duas" && (
-              <DuaTab duas={data.duas} addDua={data.addDua} deleteDua={data.deleteDua} locked={locked} />
-            )}
-            {activeTab === "questions" && (
-              <QuestionsTab />
-            )}
-            {activeTab === "report" && (
-              <ReportTab
-                getReports={data.getReports}
-                exportReports={data.exportReports}
-                clearAllData={data.clearAllData}
-              />
-            )}
+            <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">جارٍ التحميل...</div>}>
+              {activeTab === "prayer" && (
+                <PrayerTab prayers={data.prayers} setPrayers={data.setPrayers} locked={locked} />
+              )}
+              {activeTab === "azkar" && (
+                <WirdTab
+                  wirds={data.wirds} wirdChecked={data.wirdChecked}
+                  setWirdChecked={data.setWirdChecked} addWird={data.addWird}
+                  deleteWird={data.deleteWird} updateWird={data.updateWird}
+                  canManageWirdConfig={data.canManageWirdConfig}
+                  wirdConfigLoading={data.wirdConfigLoading}
+                  wirdConfigSaving={data.wirdConfigSaving}
+                  wirdConfigError={data.wirdConfigError}
+                  refreshWirdConfig={data.refreshWirdConfig}
+                  locked={locked}
+                />
+              )}
+              {activeTab === "quran" && (
+                <QuranTab quranValue={data.quranValue} setQuranValue={data.setQuranValue} locked={locked} />
+              )}
+              {activeTab === "zikr" && (
+                <ZikrTab
+                  zikrs={data.zikrs} zikrTotals={data.zikrTotals}
+                  setZikrTotals={data.setZikrTotals} addZikr={data.addZikr}
+                  deleteZikr={data.deleteZikr} locked={locked}
+                />
+              )}
+              {activeTab === "duas" && (
+                <DuaTab duas={data.duas} addDua={data.addDua} deleteDua={data.deleteDua} locked={locked} />
+              )}
+              {activeTab === "questions" && (
+                <QuestionsTab />
+              )}
+              {activeTab === "report" && (
+                <ReportTab
+                  getReports={data.getReports}
+                  exportReports={data.exportReports}
+                  clearAllData={data.clearAllData}
+                />
+              )}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
 

@@ -114,6 +114,69 @@ export function createAdminQuestionRouter({
     }
   });
 
+  router.delete("/groups/:groupId/submissions", async (req, res, next) => {
+    try {
+      const groupId = parseGroupId(req.params.groupId);
+      if (!groupId) {
+        throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
+      }
+
+      const removed = await questionService.clearGroupResults({ groupId });
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_questions_clear_results:${groupId}:sub_${removed.submissions}:sess_${removed.sessions}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json({ removed });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/groups/:groupId/archive", async (req, res, next) => {
+    try {
+      const groupId = parseGroupId(req.params.groupId);
+      if (!groupId) {
+        throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
+      }
+
+      const moved = await questionService.archiveGroup({ groupId });
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_questions_archive_group:${groupId}:sub_${moved.submissions}:sess_${moved.sessions}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json({ moved });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.delete("/groups/:groupId", async (req, res, next) => {
+    try {
+      const groupId = parseGroupId(req.params.groupId);
+      if (!groupId) {
+        throw new AppError(400, "Group ID is required.", "MISSING_GROUP_ID");
+      }
+
+      const removed = await questionService.deleteGroup({ groupId });
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_questions_delete_group:${groupId}:sub_${removed.submissions}:sess_${removed.sessions}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get("/groups/:groupId/submissions", async (req, res, next) => {
     try {
       const groupId = parseGroupId(req.params.groupId);
@@ -155,4 +218,3 @@ export function createAdminQuestionRouter({
 
   return router;
 }
-

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock, HelpCircle, Send } from "lucide-react";
-import { apiGet, apiPost } from "@/lib/api";
+import { ApiError, apiGet, apiPost } from "@/lib/api";
 import type { UserQuestionGroup } from "@/types/questions";
 
 interface ActiveGroupResponse {
   serverTime: string;
   group: UserQuestionGroup | null;
+  alreadySubmitted?: boolean;
 }
 
 export default function QuestionsTab() {
@@ -25,6 +26,7 @@ export default function QuestionsTab() {
     try {
       const response = await apiGet<ActiveGroupResponse>("/api/questions/active");
       setGroup(response.group);
+      const alreadySubmitted = Boolean(response.alreadySubmitted);
 
       const nextGroupId = response.group?.id ?? null;
       if (!nextGroupId) {
@@ -32,8 +34,10 @@ export default function QuestionsTab() {
         setAnswers({});
       } else if (nextGroupId !== currentGroupId) {
         // New group became active; reset answers.
-        setSubmitted(false);
+        setSubmitted(alreadySubmitted);
         setAnswers({});
+      } else {
+        setSubmitted(alreadySubmitted);
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "فشل تحميل الأسئلة.");
@@ -89,6 +93,14 @@ export default function QuestionsTab() {
     if (!group || group.status !== "open") {
       return;
     }
+    if (submitted) {
+      return;
+    }
+    if (remainingSeconds <= 0) {
+      setError("انتهى الوقت. لا يمكن إرسال الإجابات الآن.");
+      void loadActiveGroup();
+      return;
+    }
     if (!confirm("سيتم إرسال إجاباتك الآن. هل أنت متأكد؟")) {
       return;
     }
@@ -103,7 +115,20 @@ export default function QuestionsTab() {
       setSubmitted(true);
       void loadActiveGroup();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "فشل إرسال الإجابات.");
+      const apiError = requestError instanceof ApiError ? requestError : null;
+      if (apiError?.code === "ALREADY_SUBMITTED") {
+        setSubmitted(true);
+        setError("تم إرسال إجاباتك بالفعل. لا يمكن الإرسال مرة أخرى.");
+        void loadActiveGroup();
+        return;
+      }
+      if (apiError?.code === "GROUP_CLOSED") {
+        setError("تم إغلاق هذه المجموعة أو انتهى وقتها. لا يمكن إرسال الإجابات الآن.");
+        void loadActiveGroup();
+        return;
+      }
+
+      setError(apiError?.message ?? (requestError instanceof Error ? requestError.message : "فشل إرسال الإجابات."));
     } finally {
       setSubmitting(false);
     }
@@ -133,6 +158,18 @@ export default function QuestionsTab() {
         {error && (
           <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
             {error}
+          </div>
+        )}
+
+        {group?.status === "open" && submitted && (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+            تم إرسال إجاباتك بالفعل. لا يمكن الإرسال مرة أخرى.
+          </div>
+        )}
+
+        {group?.status === "open" && !submitted && remainingSeconds === 0 && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+            انتهى الوقت لهذه المجموعة. سيتم إغلاقها من جهة النظام.
           </div>
         )}
 
