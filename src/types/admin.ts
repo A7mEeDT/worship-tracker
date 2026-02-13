@@ -71,3 +71,17 @@ export interface BackupConfig {
   intervalMs: number;
   retentionDays: number;
 }
+
+export type TwoFactorStatus = "disabled" | "pending" | "enabled";
+
+export interface TwoFactorStatusResponse {
+  status: TwoFactorStatus;
+  enabledAt: string | null;
+  enforce: boolean;
+}
+
+export interface TwoFactorSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+  issuer: string;
+}

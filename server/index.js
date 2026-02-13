@@ -18,6 +18,7 @@ import * as authService from "./services/auth-service.js";
 import * as credentialsService from "./services/credential-service.js";
 import { createNotificationService } from "./services/notification-service.js";
 import { startBackupScheduler } from "./services/backup-service.js";
+import * as twoFactorService from "./services/twofactor-service.js";
 import * as questionService from "./services/question-service.js";
 import * as reportService from "./services/report-service.js";
 import * as wirdConfigService from "./services/wird-config-service.js";
@@ -26,6 +27,7 @@ const app = express();
 const server = http.createServer(app);
 
 await credentialsService.initializeCredentialStore();
+await twoFactorService.initializeTwoFactorStore();
 await initializeActivityLog();
 await wirdConfigService.initializeWirdConfigStore();
 await reportService.initializeReportStore();
@@ -74,6 +76,7 @@ app.use(
     credentialsService,
     authService,
     authMiddleware,
+    twoFactorService,
     auditService,
     getRequestIpAddress,
   }),
@@ -92,8 +95,10 @@ app.use(
   "/api/admin",
   createAdminRouter({
     authMiddleware,
+    authService,
     credentialsService,
     notificationService,
+    twoFactorService,
     auditService,
     getRequestIpAddress,
   }),

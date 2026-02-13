@@ -2,6 +2,11 @@ import { ApiError } from "@/lib/api";
 import type { UserRole } from "@/types/auth";
 
 const ARABIC_ERROR_BY_CODE: Record<string, string> = {
+  TOTP_REQUIRED: "يلزم إدخال رمز المصادقة الثنائية للمشرف.",
+  INVALID_OTP: "رمز المصادقة الثنائية يجب أن يكون 6 أرقام.",
+  TOTP_INVALID: "رمز المصادقة الثنائية غير صحيح.",
+  ADMIN_2FA_SETUP_REQUIRED: "يجب تفعيل المصادقة الثنائية للمشرف قبل الوصول للوحة الإدارة.",
+  MFA_REQUIRED: "الجلسة الحالية غير مؤكدة بالمصادقة الثنائية. سجّل الخروج ثم أعد تسجيل الدخول برمز المصادقة.",
   AUTH_REQUIRED: "يلزم تسجيل الدخول أولاً.",
   FORBIDDEN: "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
   MISSING_CREDENTIALS: "الرجاء إدخال اسم المستخدم وكلمة المرور.",

@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { ADMIN_ROLES } from "../constants.js";
 import { AppError } from "../utils/errors.js";
 
 export function createAuthRouter({
   credentialsService,
   authService,
   authMiddleware,
+  twoFactorService,
   auditService,
   getRequestIpAddress,
 }) {
@@ -14,6 +16,7 @@ export function createAuthRouter({
     try {
       const username = String(req.body?.username ?? "");
       const password = String(req.body?.password ?? "");
+      const otp = req.body?.otp;
 
       if (!username || !password) {
         throw new AppError(400, "Username and password are required.", "MISSING_CREDENTIALS");
@@ -24,7 +27,20 @@ export function createAuthRouter({
         throw new AppError(401, "Invalid username or password.", "INVALID_CREDENTIALS");
       }
 
-      const token = authService.createSessionToken(user);
+      let mfaVerified = false;
+      if (ADMIN_ROLES.includes(user.role)) {
+        const mfaEnabled = await twoFactorService.hasTwoFactorEnabled(user.username);
+        if (mfaEnabled) {
+          if (!otp) {
+            throw new AppError(401, "Two-factor code is required.", "TOTP_REQUIRED");
+          }
+
+          await twoFactorService.verifyTwoFactorForLogin(user.username, otp);
+          mfaVerified = true;
+        }
+      }
+
+      const token = authService.createSessionToken({ username: user.username, mfaVerified });
       authService.setSessionCookie(res, token);
 
       await auditService.recordUserAction({

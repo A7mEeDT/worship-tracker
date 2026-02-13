@@ -45,10 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string, otp?: string) => {
     const response = await apiPost<AuthResponse>("/api/auth/login", {
       username,
       password,
+      ...(otp ? { otp } : {}),
     });
     setUser(response.user);
     return response.user;

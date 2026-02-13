@@ -25,8 +25,10 @@ const AUDIT_LOG_TYPES = new Set(["user_activity", "admin_notifications"]);
 
 export function createAdminRouter({
   authMiddleware,
+  authService,
   credentialsService,
   notificationService,
+  twoFactorService,
   auditService,
   getRequestIpAddress,
 }) {
@@ -39,6 +41,142 @@ export function createAdminRouter({
 
   router.use(authMiddleware.authenticateRequest);
   router.use(authMiddleware.requireRoles(...ADMIN_ROLES));
+
+  router.get("/security/2fa/status", async (req, res, next) => {
+    try {
+      const status = await twoFactorService.getTwoFactorStatus(req.user.username);
+      res.json({ ...status, enforce: config.admin2faEnforce });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/security/2fa/setup", async (req, res, next) => {
+    try {
+      const setup = await twoFactorService.beginTwoFactorSetup(req.user.username);
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: "admin_2fa_setup",
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.status(201).json(setup);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/security/2fa/verify", async (req, res, next) => {
+    try {
+      const otp = req.body?.otp;
+      const result = await twoFactorService.enableTwoFactor(req.user.username, otp);
+
+      // Refresh session cookie with a token that is marked MFA verified.
+      const token = authService.createSessionToken({ username: req.user.username, mfaVerified: true });
+      authService.setSessionCookie(res, token);
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: "admin_2fa_enable",
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/security/2fa/cancel", async (req, res, next) => {
+    try {
+      const result = await twoFactorService.cancelTwoFactorSetup(req.user.username);
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: "admin_2fa_cancel",
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/security/2fa/disable", async (req, res, next) => {
+    try {
+      const password = String(req.body?.password ?? "");
+      const otp = req.body?.otp;
+
+      if (!password) {
+        throw new AppError(400, "Password is required.", "MISSING_PASSWORD");
+      }
+
+      const verified = await credentialsService.authenticateUser(req.user.username, password);
+      if (!verified) {
+        throw new AppError(401, "Invalid username or password.", "INVALID_CREDENTIALS");
+      }
+
+      const result = await twoFactorService.disableTwoFactor(req.user.username, otp);
+
+      // Clear MFA flag from token on disable (no longer relevant).
+      const token = authService.createSessionToken({ username: req.user.username, mfaVerified: false });
+      authService.setSessionCookie(res, token);
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: "admin_2fa_disable",
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/security/2fa/reset", authMiddleware.requireRoles(Roles.PRIMARY_ADMIN), async (req, res, next) => {
+    try {
+      const targetUsername = req.body?.username;
+      if (!targetUsername) {
+        throw new AppError(400, "Target username is required.", "MISSING_TARGET_USERNAME");
+      }
+
+      const result = await twoFactorService.resetTwoFactor(targetUsername);
+
+      await auditService.recordUserAction({
+        username: req.user.username,
+        action: `admin_2fa_reset:${String(targetUsername).toLowerCase()}`,
+        ipAddress: getRequestIpAddress(req),
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  if (config.admin2faEnforce) {
+    router.use(async (req, _res, next) => {
+      try {
+        const enabled = await twoFactorService.hasTwoFactorEnabled(req.user.username);
+        if (!enabled) {
+          next(new AppError(403, "Admin must enable two-factor authentication.", "ADMIN_2FA_SETUP_REQUIRED"));
+          return;
+        }
+
+        if (!req.user.mfaVerified) {
+          next(new AppError(401, "Two-factor authentication is required.", "MFA_REQUIRED"));
+          return;
+        }
+
+        next();
+      } catch (error) {
+        next(error);
+      }
+    });
+  }
 
   router.get("/analytics/timeline", async (req, res, next) => {
     try {

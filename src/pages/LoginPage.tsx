@@ -2,12 +2,15 @@ import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ShieldCheck, Sunrise } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { ApiError } from "@/lib/api";
 import { getArabicErrorMessage } from "@/lib/error-messages";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpRequired, setOtpRequired] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -23,11 +26,16 @@ export default function LoginPage() {
     setSubmitting(true);
 
     try {
-      const currentUser = await login(username, password);
+      const currentUser = await login(username, password, otp.trim() ? otp.trim() : undefined);
       const from = typeof location.state?.from === "string" ? location.state.from : null;
       const defaultPath = currentUser.role === "user" ? "/" : "/admin/dashboard";
       navigate(from || defaultPath, { replace: true });
     } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        if (requestError.code === "TOTP_REQUIRED" || requestError.code === "TOTP_INVALID") {
+          setOtpRequired(true);
+        }
+      }
       setError(getArabicErrorMessage(requestError));
     } finally {
       setSubmitting(false);
@@ -82,6 +90,21 @@ export default function LoginPage() {
             autoComplete="current-password"
             required
           />
+
+          {otpRequired && (
+            <>
+              <label className="mt-4 block text-xs font-semibold tracking-wider text-slate-700">رمز المصادقة الثنائية (6 أرقام)</label>
+              <input
+                inputMode="numeric"
+                className="mt-2 w-full rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none ring-amber-300/70 transition focus:ring-2"
+                value={otp}
+                onChange={(event) => setOtp(event.target.value.replace(/[^\d]/gu, "").slice(0, 6))}
+                autoComplete="one-time-code"
+                placeholder="مثال: 123456"
+                required
+              />
+            </>
+          )}
 
           {error && (
             <div className="mt-4 rounded-2xl border border-rose-300/70 bg-rose-50 px-4 py-3 text-sm text-rose-800">

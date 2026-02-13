@@ -33,6 +33,9 @@ export const config = {
   bcryptRounds: parseNumber(process.env.BCRYPT_ROUNDS, 12),
   primaryAdminUsername: (process.env.PRIMARY_ADMIN_USERNAME ?? "primary-admin").toLowerCase(),
   primaryAdminPassword: process.env.PRIMARY_ADMIN_PASSWORD ?? "ChangeMe!2026",
+  totpIssuer: process.env.TOTP_ISSUER ?? "Worship Tracker",
+  totpEncryptionSecret: process.env.TOTP_ENCRYPTION_SECRET ?? (process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET),
+  admin2faEnforce: parseBoolean(process.env.ADMIN_2FA_ENFORCE, false),
   backupEnabled: parseBoolean(process.env.BACKUP_ENABLED, (process.env.NODE_ENV ?? "development") === "production"),
   backupIntervalMs: parseNumber(
     process.env.BACKUP_INTERVAL_MS,

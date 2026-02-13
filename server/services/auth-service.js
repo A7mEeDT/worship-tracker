@@ -19,11 +19,12 @@ function parseBearerToken(headerValue) {
   return token.trim();
 }
 
-export function createSessionToken({ username }) {
+export function createSessionToken({ username, mfaVerified = false }) {
   return jwt.sign(
     {
       sub: username,
       typ: "session",
+      mfa: Boolean(mfaVerified),
     },
     config.jwtSecret,
     {
@@ -73,6 +74,7 @@ export async function authenticateToken(token) {
   return {
     username: user.username,
     role: user.role,
+    mfaVerified: Boolean(payload?.mfa),
   };
 }
 

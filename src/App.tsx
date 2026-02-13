@@ -19,6 +19,7 @@ const AdminQuestionsPage = lazy(() => import("./pages/admin/AdminQuestionsPage")
 const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotificationsPage"));
 const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const AdminStoragePage = lazy(() => import("./pages/admin/AdminStoragePage"));
+const AdminSecurityPage = lazy(() => import("./pages/admin/AdminSecurityPage"));
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
                 <Route path="notifications" element={<AdminNotificationsPage />} />
                 <Route path="audit" element={<AdminAuditLogPage />} />
                 <Route path="storage" element={<AdminStoragePage />} />
+                <Route path="security" element={<AdminSecurityPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

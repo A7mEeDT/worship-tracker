@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Bell, HardDrive, HelpCircle, LayoutDashboard, LogOut, Menu, ScrollText, ShieldCheck, Users } from "lucide-react";
+import { Bell, HardDrive, HelpCircle, KeyRound, LayoutDashboard, LogOut, Menu, ScrollText, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { roleLabel } from "@/lib/error-messages";
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/admin/notifications", label: "الإشعارات", icon: Bell },
   { to: "/admin/audit", label: "سجل التدقيق", icon: ScrollText },
   { to: "/admin/storage", label: "التخزين", icon: HardDrive },
+  { to: "/admin/security", label: "الأمان", icon: KeyRound },
 ];
 
 export default function AdminLayout() {

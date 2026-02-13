@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Bell, LayoutDashboard, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { roleLabel } from "@/lib/error-messages";
+import InstallPwaButton from "@/components/pwa/InstallPwaButton";
 
 export default function MainToolbar() {
   const { user, logout } = useAuth();
@@ -29,6 +30,7 @@ export default function MainToolbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            <InstallPwaButton />
             {canAccessAdmin && (
               <>
                 <Link
